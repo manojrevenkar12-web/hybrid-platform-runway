@@ -1,0 +1,838 @@
+{
+  "set": "cases-1",
+  "status_at_first_run": "blind",
+  "sha256": "2fa3542b60a3317a96ca2382cb53e5fbf57fe5a5d6a1372700d55ab7754fde92",
+  "ran_at": "2026-10-28T13:27:15+00:00",
+  "headline": "42 VMs: verdict right 100.0%, every rule right 100.0%, blocked VMs let through 0; 12 plans: 12 fully right, 88/88 checks, invariant violations 0.",
+  "vms": {
+    "cases": 42,
+    "verdict_right": 1.0,
+    "rules_right": 1.0,
+    "blocked_vms_let_through": 0,
+    "rows": [
+      {
+        "id": "v001",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v002",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v003",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v004",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v005",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v006",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v007",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v008",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v009",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v010",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v011",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v012",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v013",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v014",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v015",
+        "want": "auto",
+        "got": "auto",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v016",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v017",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v018",
+        "want": "auto",
+        "got": "auto",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v019",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v020",
+        "want": "auto",
+        "got": "auto",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v021",
+        "want": "auto",
+        "got": "auto",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v022",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v023",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v024",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v025",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v026",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v027",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v028",
+        "want": "auto",
+        "got": "auto",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v029",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v030",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v031",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v032",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v033",
+        "want": "auto",
+        "got": "auto",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v034",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v035",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v036",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v037",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v038",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v039",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v040",
+        "want": "blocked",
+        "got": "blocked",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v041",
+        "want": "auto",
+        "got": "auto",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      },
+      {
+        "id": "v042",
+        "want": "attention",
+        "got": "attention",
+        "verdict_right": true,
+        "rules_right": true,
+        "missing_rules": [],
+        "extra_rules": []
+      }
+    ]
+  },
+  "scenarios": {
+    "scenarios": 12,
+    "scenarios_fully_right": 12,
+    "checks": 88,
+    "checks_right": 88,
+    "invariant_violations": 0,
+    "rows": [
+      {
+        "id": "s01",
+        "checks": [
+          {
+            "check": "placed hq-erp-db-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-erp-app-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-erp-app-02",
+            "ok": true
+          },
+          {
+            "check": "blocked hq-erp-cache-01",
+            "ok": true
+          },
+          {
+            "check": "order erp-db before erp-app",
+            "ok": true
+          },
+          {
+            "check": "at most 1 windows",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s02",
+        "checks": [
+          {
+            "check": "unplaced sap-s4",
+            "ok": true
+          },
+          {
+            "check": "placed hq-intranet-01",
+            "ok": true
+          },
+          {
+            "check": "placed factory-mes-line2-01",
+            "ok": true
+          },
+          {
+            "check": "no hq wave 2027-02-03T09:00:00+01:00..2027-02-22T09:00:00+01:00",
+            "ok": true
+          },
+          {
+            "check": "no hq wave 2027-02-25T20:00:00+01:00..2027-02-26T02:00:00+01:00",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s03",
+        "checks": [
+          {
+            "check": "unplaced mes",
+            "ok": true
+          },
+          {
+            "check": "placed hq-erp-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-erp-02",
+            "ok": true
+          },
+          {
+            "check": "placed hq-erp-03",
+            "ok": true
+          },
+          {
+            "check": "placed hq-erp-04",
+            "ok": true
+          },
+          {
+            "check": "placed hq-erp-05",
+            "ok": true
+          },
+          {
+            "check": "placed hq-erp-mon-01",
+            "ok": true
+          },
+          {
+            "check": "placed factory-ntp-01",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s04",
+        "checks": [
+          {
+            "check": "placed hq-dwh-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-dwh-02",
+            "ok": true
+          },
+          {
+            "check": "placed hq-dwh-03",
+            "ok": true
+          },
+          {
+            "check": "placed hq-dwh-etl-01",
+            "ok": true
+          },
+          {
+            "check": "order dwh before dwh-etl",
+            "ok": true
+          },
+          {
+            "check": "no hq wave 2027-03-10T00:00:00+01:00..2027-03-11T00:00:00+01:00",
+            "ok": true
+          },
+          {
+            "check": "at most 3 windows",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s05",
+        "checks": [
+          {
+            "check": "unplaced vision-qc",
+            "ok": true
+          },
+          {
+            "check": "placed hq-gpu-train-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-jupyter-01",
+            "ok": true
+          },
+          {
+            "check": "placed factory-scada-hist-01",
+            "ok": true
+          },
+          {
+            "check": "blocked hq-gpu-train-02",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s06",
+        "checks": [
+          {
+            "check": "placed hq-dc-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-dc-02",
+            "ok": true
+          },
+          {
+            "check": "placed hq-sql-ag-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-sql-ag-02",
+            "ok": true
+          },
+          {
+            "check": "placed hq-sql-ag-03",
+            "ok": true
+          },
+          {
+            "check": "placed hq-web-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-web-02",
+            "ok": true
+          },
+          {
+            "check": "placed hq-file-02",
+            "ok": true
+          },
+          {
+            "check": "placed factory-plc-gw-01",
+            "ok": true
+          },
+          {
+            "check": "placed factory-plc-gw-02",
+            "ok": true
+          },
+          {
+            "check": "order ad-hq before sql-ag",
+            "ok": true
+          },
+          {
+            "check": "hq-dc-01 and hq-dc-02 apart",
+            "ok": true
+          },
+          {
+            "check": "hq-sql-ag-01 and hq-sql-ag-02 apart",
+            "ok": true
+          },
+          {
+            "check": "hq-sql-ag-01 and hq-sql-ag-03 apart",
+            "ok": true
+          },
+          {
+            "check": "hq-sql-ag-02 and hq-sql-ag-03 apart",
+            "ok": true
+          },
+          {
+            "check": "hq-web-01 and hq-web-02 apart",
+            "ok": true
+          },
+          {
+            "check": "factory-plc-gw-01 and factory-plc-gw-02 apart",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s07",
+        "checks": [
+          {
+            "check": "placed hq-erp-db-02",
+            "ok": true
+          },
+          {
+            "check": "placed factory-mes-app-01",
+            "ok": true
+          },
+          {
+            "check": "placed factory-mes-app-02",
+            "ok": true
+          },
+          {
+            "check": "placed hq-oee-dash-01",
+            "ok": true
+          },
+          {
+            "check": "placed factory-line-hmi-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-wiki-01",
+            "ok": true
+          },
+          {
+            "check": "order erp-db before mes",
+            "ok": true
+          },
+          {
+            "check": "order mes before oee-dashboard",
+            "ok": true
+          },
+          {
+            "check": "order oee-dashboard before line-hmi",
+            "ok": true
+          },
+          {
+            "check": "no factory wave 2027-02-01T06:00:00+01:00..2027-02-18T06:00:00+01:00",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s08",
+        "checks": [
+          {
+            "check": "unplaced vdi-pool",
+            "ok": true
+          },
+          {
+            "check": "no hq wave 2027-01-15T12:00:00+01:00..2027-01-17T00:00:00+01:00",
+            "ok": true
+          },
+          {
+            "check": "no factory wave 2027-01-15T12:00:00+01:00..2027-01-17T00:00:00+01:00",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s09",
+        "checks": [
+          {
+            "check": "unplaced hpc-solver",
+            "ok": true
+          },
+          {
+            "check": "unplaced kafka",
+            "ok": true
+          },
+          {
+            "check": "placed hq-license-01",
+            "ok": true
+          },
+          {
+            "check": "placed factory-mqtt-01",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s10",
+        "checks": [
+          {
+            "check": "unplaced archive",
+            "ok": true
+          },
+          {
+            "check": "placed hq-reporting-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-reporting-02",
+            "ok": true
+          },
+          {
+            "check": "placed hq-print-01",
+            "ok": true
+          },
+          {
+            "check": "blocked hq-legacy-ora-01",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s11",
+        "checks": [
+          {
+            "check": "unplaced line-scada",
+            "ok": true
+          },
+          {
+            "check": "placed hq-crm-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-crm-02",
+            "ok": true
+          },
+          {
+            "check": "placed hq-crm-portal-01",
+            "ok": true
+          },
+          {
+            "check": "blocked launch-ops-01",
+            "ok": true
+          },
+          {
+            "check": "order crm before crm-portal",
+            "ok": true
+          },
+          {
+            "check": "no hq wave 2027-02-13T03:00:00+01:00..2027-02-14T03:00:00+01:00",
+            "ok": true
+          },
+          {
+            "check": "no factory wave 2027-02-01T00:00:00+01:00..2027-02-28T01:00:00+01:00",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      },
+      {
+        "id": "s12",
+        "checks": [
+          {
+            "check": "placed hq-dc-03",
+            "ok": true
+          },
+          {
+            "check": "placed hq-crm-app-01",
+            "ok": true
+          },
+          {
+            "check": "placed hq-pxe-01",
+            "ok": true
+          },
+          {
+            "check": "placed factory-historian-02",
+            "ok": true
+          },
+          {
+            "check": "blocked hq-mssql-02",
+            "ok": true
+          },
+          {
+            "check": "blocked factory-opc-02",
+            "ok": true
+          },
+          {
+            "check": "blocked launch-tm-01",
+            "ok": true
+          },
+          {
+            "check": "order ad before crm-app",
+            "ok": true
+          },
+          {
+            "check": "no hq wave 2027-02-15T12:00:00+01:00..2027-02-19T12:00:00+01:00",
+            "ok": true
+          },
+          {
+            "check": "no factory wave 2027-02-15T12:00:00+01:00..2027-02-19T12:00:00+01:00",
+            "ok": true
+          }
+        ],
+        "all_ok": true,
+        "invariant_violations": []
+      }
+    ]
+  }
+}
