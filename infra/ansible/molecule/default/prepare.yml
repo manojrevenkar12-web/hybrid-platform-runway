@@ -3,10 +3,17 @@
   hosts: all
   gather_facts: true
   tasks:
-    - name: SSH server and open-vm-tools present, as on a VMware guest
-      ansible.builtin.package:
+    - name: SSH server and open-vm-tools present, as on a VMware guest (Debian)
+      ansible.builtin.apt:
         name: [openssh-server, open-vm-tools]
         state: present
+        update_cache: true
+      when: ansible_facts.os_family == 'Debian'
+    - name: SSH server and open-vm-tools present, as on a VMware guest (RedHat)
+      ansible.builtin.dnf:
+        name: [openssh-server, open-vm-tools]
+        state: present
+      when: ansible_facts.os_family == 'RedHat'
     - name: Debian needs ifupdown2's directory for the node network
       ansible.builtin.file:
         path: /etc/network

@@ -7,10 +7,7 @@ run "security_decisions" {
   command = plan
 
   assert {
-    condition = alltrue([for v in aws_vpn_connection.site : (
-      v.tunnel1_ike_versions = = toset(["ikev2"]) && v.tunnel2_ike_versions == toset(["ikev2"]) &&
-      contains(v.tunnel1_phase1_dh_group_numbers, 20) && v.static_routes_only
-    )])
+    condition     = alltrue([for v in aws_vpn_connection.site : contains(v.tunnel1_ike_versions, "ikev2") && length(v.tunnel1_ike_versions) == 1 && contains(v.tunnel2_ike_versions, "ikev2") && length(v.tunnel2_ike_versions) == 1 && contains(v.tunnel1_phase1_dh_group_numbers, 20) && v.static_routes_only])
     error_message = "every tunnel is IKEv2 with DH group 20 and static routes"
   }
   assert {
