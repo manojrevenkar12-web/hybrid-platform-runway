@@ -1,0 +1,27 @@
+# One gate per site the deployment touches. Outside a freeze it passes; inside one it fails unless a
+# named person approved an emergency change (EMERGENCY_CHANGE_APPROVED_BY, a protected variable),
+# and the job log records who.
+gate:freeze:
+  extends: .python
+  stage: gate
+  parallel:
+    matrix:
+      - SITE: [hq, factory]
+  script:
+    - runway freeze check --site "$SITE" ${FREEZE_AT:+--at "$FREEZE_AT"}
+
+deploy:promote:
+  stage: deploy
+  image: alpine/git:2.47.1
+  needs: [gate:freeze, build:runway, scan:runway]
+  script:
+    - apk add --no-cache kustomize
+    - cd platform/gitops/apps/runway/overlays/openshift
+    - kustomize edit set image "runway=$RUNWAY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - git config user.email "platform-bot@hq.example" && git config user.name "platform-bot"
+    - git commit -am "Promote runway $CI_COMMIT_SHORT_SHA" && git push "https://platform-bot:${GITOPS_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" HEAD:$CI_DEFAULT_BRANCH
+  rules:
+    # GitLab's own deploy freeze periods (created from the same calendar by `runway freeze gitlab`)
+    - if: $CI_DEPLOY_FREEZE != null
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

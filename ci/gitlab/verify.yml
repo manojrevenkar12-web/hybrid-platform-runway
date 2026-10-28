@@ -1,0 +1,42 @@
+.python:
+  image: python:3.12-slim
+  cache:
+    key: pip
+    paths: [.cache/pip]
+  before_script:
+    - pip install -q -e ".[dev]"
+
+verify:python:
+  extends: .python
+  stage: verify
+  script:
+    - ruff check . && ruff format --check .
+    - mypy
+    - pytest -q
+    - runway drill --out reports/drill.json
+  artifacts:
+    paths: [reports/drill.json]
+    expire_in: 30 days
+
+verify:ansible:
+  image: python:3.12-slim
+  stage: verify
+  script:
+    - pip install -q "ansible-core==2.18.1" "ansible-lint==24.12.2"
+    - cd infra/ansible && ansible-lint --offline && ansible-playbook --syntax-check -i inventory site.yml
+  rules:
+    - changes: [infra/ansible/**/*]
+
+verify:terraform:
+  image:
+    name: hashicorp/terraform:1.9.8
+    entrypoint: [""]
+  stage: verify
+  script:
+    - cd infra/terraform
+    - terraform fmt -check -recursive
+    - terraform init -backend=false -input=false
+    - terraform validate
+    - terraform test
+  rules:
+    - changes: [infra/terraform/**/*]

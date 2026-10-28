@@ -1,0 +1,14 @@
+# The platform pipeline as it runs on the company's GitLab. Templates live in ci/gitlab/.
+# Deployments are GitOps: the pipeline changes an image tag in Git and Argo CD syncs it, so the
+# launch freeze is enforced twice (here, and by Argo CD's sync windows) from one calendar.
+stages: [verify, build, scan, plan, gate, deploy]
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  RUNWAY_IMAGE: "$CI_REGISTRY_IMAGE/runway"
+
+include:
+  - local: ci/gitlab/verify.yml
+  - local: ci/gitlab/build.yml
+  - local: ci/gitlab/migration.yml
+  - local: ci/gitlab/deploy.yml

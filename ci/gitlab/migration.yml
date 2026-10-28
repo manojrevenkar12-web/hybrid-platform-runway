@@ -1,0 +1,11 @@
+# The migration plan is reviewed like code: every merge request shows the waves it would produce.
+plan:migration:
+  extends: .python
+  stage: plan
+  script:
+    - runway plan "${RUNWAY_INVENTORY:-sim}" --start "${PLAN_START:-2026-11-16}" --out plan.json
+    - runway generate "${RUNWAY_INVENTORY:-sim}" --start "${PLAN_START:-2026-11-16}" --out generated
+    - python3 -c "import json;d=json.load(open('plan.json'));print(len(d['waves']),'waves,',len(d['blocked']),'blocked,',len(d['unplaced']),'unplaced')"
+  artifacts:
+    paths: [plan.json, generated/]
+    expire_in: 30 days
