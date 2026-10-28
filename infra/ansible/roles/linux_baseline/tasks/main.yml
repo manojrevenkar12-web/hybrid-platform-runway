@@ -51,6 +51,12 @@
       {% endfor %}
   notify: Apply sysctl
 
+- name: Drop-in directory for journald
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: "0755"
+
 - name: Persistent journal with a size cap
   ansible.builtin.copy:
     dest: /etc/systemd/journald.conf.d/10-baseline.conf

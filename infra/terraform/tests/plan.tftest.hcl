@@ -1,6 +1,23 @@
 # Tests with mocked providers: no credentials, no cost, nothing created. `apply` against mocks
 # fills in computed values (ARNs, policies) so the assertions can read them.
-mock_provider "aws" {}
+mock_provider "aws" {
+  # the AWS provider checks ARN formats, so the mocks hand out well-formed ones
+  mock_resource "aws_cloudwatch_log_group" {
+    defaults = { arn = "arn:aws:logs:eu-central-1:123456789012:log-group:/hybrid/vpc-flow" }
+  }
+  mock_resource "aws_iam_role" {
+    defaults = { arn = "arn:aws:iam::123456789012:role/hybrid-vpc-flow-logs" }
+  }
+  mock_resource "aws_kms_key" {
+    defaults = { arn = "arn:aws:kms:eu-central-1:123456789012:key/11111111-2222-3333-4444-555555555555" }
+  }
+  mock_resource "aws_s3_bucket" {
+    defaults = { arn = "arn:aws:s3:::pve-offsite-test", id = "pve-offsite-test", bucket = "pve-offsite-test" }
+  }
+  mock_resource "aws_iam_policy" {
+    defaults = { arn = "arn:aws:iam::123456789012:policy/pve-offsite-sync" }
+  }
+}
 mock_provider "proxmox" {}
 
 run "security_decisions" {

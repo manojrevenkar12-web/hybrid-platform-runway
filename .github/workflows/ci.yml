@@ -177,9 +177,10 @@ jobs:
           done
           kubectl -n argocd get application runway -o jsonpath='{.status.health.status}/{.status.sync.status}{"\n"}'
           [ "$h" = "Healthy/Synced" ] || { kubectl -n argocd get application runway -o yaml | tail -40 | scripts/annotate_on_failure.sh "argo cd sync" sh -c 'cat; exit 1'; }
-          kubectl -n runway port-forward svc/runway 8070:8070 >/dev/null 2>&1 &
-          sleep 3
-          curl -sf localhost:8070/api/summary | python3 -c "import json,sys;d=json.load(sys.stdin);print('::notice title=runway on kind::'+str(d['estate']['vms'])+' VMs, '+str(d['plan']['waves'])+' waves')"
+          kubectl -n runway rollout status deploy/runway --timeout=180s
+          kubectl -n runway port-forward svc/runway 8070:8070 >/tmp/pf.log 2>&1 &
+          scripts/annotate_on_failure.sh "runway API on kind" curl -sf --retry 15 --retry-all-errors --retry-delay 2 -o /tmp/summary.json localhost:8070/api/summary
+          python3 -c "import json;d=json.load(open('/tmp/summary.json'));print('::notice title=runway on kind::Argo CD synced runway from this commit; '+str(d['estate']['vms'])+' VMs, '+str(d['plan']['waves'])+' waves')"
       - name: A launch freeze blocks the next sync
         run: |
           mkdir -p /tmp/frozen && ci/kind/freeze-config.sh /tmp/frozen

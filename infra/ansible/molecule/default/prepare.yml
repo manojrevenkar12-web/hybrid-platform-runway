@@ -14,6 +14,10 @@
         name: [openssh-server, open-vm-tools]
         state: present
       when: ansible_facts.os_family == 'RedHat'
+    - name: Host keys, as every real server has
+      ansible.builtin.command: ssh-keygen -A
+      args:
+        creates: /etc/ssh/ssh_host_ed25519_key
     - name: Debian needs ifupdown2's directory for the node network
       ansible.builtin.file:
         path: /etc/network
