@@ -40,11 +40,27 @@ class Proxmox:
         if token:
             self.http.headers["Authorization"] = f"PVEAPIToken={token}"
 
-    def _req(self, method: str, path: str, **kw: Any) -> Any:
-        r = self.http.request(method, self.base + path, **kw)
-        if r.status_code >= 400:
-            raise ProxmoxError(f"{method} {path}: {r.status_code} {r.text[:200]}")
-        return r.json().get("data")
+    TRANSIENT = (502, 503, 504, 596)  # 596: Proxmox's "broken pipe / proxy" status between nodes
+
+    def _req(self, method: str, path: str, retry: bool = True, **kw: Any) -> Any:
+        """One API call. Transient failures are retried, except where a retry could act twice
+        (creating a VM): the caller decides there, with the journal to go on."""
+        attempts = 3 if retry else 1
+        for n in range(attempts):
+            try:
+                r = self.http.request(method, self.base + path, **kw)
+            except httpx.TransportError as e:
+                if n + 1 == attempts:
+                    raise ProxmoxError(f"{method} {path}: {e}") from e
+                time.sleep(self.poll_s)
+                continue
+            if r.status_code in self.TRANSIENT and n + 1 < attempts:
+                time.sleep(self.poll_s)
+                continue
+            if r.status_code >= 400:
+                raise ProxmoxError(f"{method} {path}: {r.status_code} {r.text[:200]}")
+            return r.json().get("data")
+        raise ProxmoxError(f"{method} {path}: no answer")
 
     def nodes(self) -> list[dict[str, Any]]:
         return list(self._req("GET", "/nodes") or [])
@@ -66,7 +82,7 @@ class Proxmox:
         return str((self._req("GET", f"/nodes/{node}/qemu/{vmid}/status/current") or {}).get("status", "unknown"))
 
     def create(self, node: str, params: dict[str, Any]) -> str:
-        return str(self._req("POST", f"/nodes/{node}/qemu", data=params))
+        return str(self._req("POST", f"/nodes/{node}/qemu", retry=False, data=params))
 
     def start(self, node: str, vmid: int) -> str:
         return str(self._req("POST", f"/nodes/{node}/qemu/{vmid}/status/start"))

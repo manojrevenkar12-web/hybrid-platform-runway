@@ -213,7 +213,10 @@ class Cutover:
             # interrupted after the source may have been stopped: never guess, roll back cleanly
             return self._rollback(p, f"resumed after interruption at {last[0]}/{last[1]}", last[0], None)
         self.j.record(vm.name, "precheck", "start")
-        why = self._precheck(p)
+        try:
+            why = self._precheck(p)
+        except (ProxmoxError, RuntimeError, LookupError) as e:
+            why = f"precheck could not run: {e}"
         if why:
             self.j.record(vm.name, "precheck", "failed", why)
             return self._done(Outcome(vm.name, SKIPPED, "precheck", why, 0.0))

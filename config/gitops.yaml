@@ -1,0 +1,5 @@
+# Argo CD cluster names per site; the freeze windows of a campaign apply to its sites' clusters.
+site_clusters:
+  hq: [ocp-hq]
+  factory: [ocp-factory]
+  launch: [k8s-launch-edge]

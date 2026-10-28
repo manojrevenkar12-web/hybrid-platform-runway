@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  runway:
+    name: runway (lint, types, unit tests, drills)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: scripts/annotate_on_failure.sh "ruff" sh -c "ruff check . && ruff format --check ."
+      - run: scripts/annotate_on_failure.sh "mypy" mypy
+      - run: scripts/annotate_on_failure.sh "pytest" pytest -q
+      - name: Cutover drill
+        run: |
+          scripts/annotate_on_failure.sh "cutover drill" runway drill --out reports/drill.json > /dev/null
+          python3 -c "import json;print('::notice title=cutover drill::'+json.load(open('reports/drill.json'))['headline'])"
+
+  vsphere:
+    name: inventory against vcsim (VMware vCenter simulator)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: Start vcsim
+        run: |
+          docker run -d --name vcsim -p 8989:8989 vmware/vcsim:v0.46.3 -l 0.0.0.0:8989
+          for i in $(seq 1 30); do curl -sk https://127.0.0.1:8989/about >/dev/null && break; sleep 1; done
+      - run: scripts/annotate_on_failure.sh "vcsim tests" pytest -q -m vcsim
+        env:
+          RUNWAY_VCENTER_URL: https://127.0.0.1:8989/sdk
+      - name: Inventory, assess and plan from the simulator
+        run: |
+          RUNWAY_VCENTER_PASSWORD=pass runway inventory --vcenter https://127.0.0.1:8989/sdk --user user --insecure --out inventory.json
+          runway assess inventory.json | head -20
+
+  generated-terraform:
+    name: generated Terraform validates against the bpg/proxmox provider
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - run: pip install -e .
+      - run: runway generate sim --start 2026-11-16 --out generated
+      - name: terraform validate every wave
+        env:
+          TF_PLUGIN_CACHE_DIR: /home/runner/.terraform.d/plugin-cache
+        run: |
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          for d in generated/terraform/wave-*; do
+            (cd "$d" && ../../../scripts/annotate_on_failure.sh "terraform validate $d" sh -c "terraform init -backend=false -input=false -no-color >/dev/null && terraform validate -no-color") || exit 1
+          done
+          echo "::notice title=generated Terraform::$(ls -d generated/terraform/wave-* | wc -l) wave roots, $(grep -o '\"vm_id\"' -r generated/terraform | wc -l) VMs, all valid against bpg/proxmox"
