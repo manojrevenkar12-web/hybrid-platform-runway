@@ -67,7 +67,7 @@ rules:
     when: {guest_family: linux}
     verdict: auto
     why: "The interface name inside the guest almost always changes; configs naming the old one lose the network."
-    action: "Generated: Ansible rewrites netplan/ifcfg/interfaces to match by MAC address."
+    action: "Generated: Ansible pins each interface's current name to its MAC (systemd .link file) before the move, and runway keeps the MAC, so every existing network config keeps working."
     source: https://computingforgeeks.com/migrate-vmware-esxi-to-proxmox-ve/
   - id: vmware-tools
     when: {tools_installed: true}

@@ -1,0 +1,49 @@
+{
+  "$comment": "OpenShift route.openshift.io/v1 Route, written from the OpenShift 4 API reference (fields this repository uses, strict). kubeconform reads it for the openshift overlay.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"enum": ["route.openshift.io/v1"]},
+    "kind": {"enum": ["Route"]},
+    "metadata": {"type": "object"},
+    "spec": {
+      "type": "object",
+      "required": ["to"],
+      "additionalProperties": false,
+      "properties": {
+        "host": {"type": "string"},
+        "path": {"type": "string"},
+        "subdomain": {"type": "string"},
+        "wildcardPolicy": {"enum": ["None", "Subdomain"]},
+        "to": {
+          "type": "object",
+          "required": ["kind", "name"],
+          "additionalProperties": false,
+          "properties": {"kind": {"enum": ["Service", ""]}, "name": {"type": "string", "minLength": 1}, "weight": {"type": "integer", "minimum": 0, "maximum": 256}}
+        },
+        "alternateBackends": {"type": "array"},
+        "port": {
+          "type": "object",
+          "required": ["targetPort"],
+          "additionalProperties": false,
+          "properties": {"targetPort": {"oneOf": [{"type": "string"}, {"type": "integer"}]}}
+        },
+        "tls": {
+          "type": "object",
+          "required": ["termination"],
+          "additionalProperties": false,
+          "properties": {
+            "termination": {"enum": ["edge", "passthrough", "reencrypt"]},
+            "insecureEdgeTerminationPolicy": {"enum": ["Allow", "None", "Redirect", ""]},
+            "certificate": {"type": "string"},
+            "key": {"type": "string"},
+            "caCertificate": {"type": "string"},
+            "destinationCACertificate": {"type": "string"}
+          }
+        }
+      }
+    },
+    "status": {"type": "object"}
+  }
+}

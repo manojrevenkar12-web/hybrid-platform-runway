@@ -6,13 +6,13 @@
 
 - name: Packages (RedHat)
   ansible.builtin.dnf:
-    name: "{{ linux_baseline_packages_common + (['dnf-automatic'] if linux_baseline_security_updates else []) }}"
+    name: "{{ linux_baseline_packages.RedHat + (['dnf-automatic'] if linux_baseline_security_updates else []) }}"
     state: present
   when: ansible_facts.os_family == 'RedHat'
 
 - name: Packages (Debian)
   ansible.builtin.apt:
-    name: "{{ linux_baseline_packages_common + (['unattended-upgrades'] if linux_baseline_security_updates else []) }}"
+    name: "{{ linux_baseline_packages.Debian + (['unattended-upgrades'] if linux_baseline_security_updates else []) }}"
     state: present
     update_cache: true
     cache_valid_time: 3600
@@ -24,6 +24,13 @@
     dest: "{{ '/etc/chrony.conf' if ansible_facts.os_family == 'RedHat' else '/etc/chrony/chrony.conf' }}"
     mode: "0644"
   notify: Restart chrony
+
+- name: Privilege separation directory sshd validates against (systemd creates it at service start)
+  ansible.builtin.file:
+    path: /run/sshd
+    state: directory
+    mode: "0755"
+  when: ansible_facts.os_family == 'Debian'
 
 - name: SSH hardening drop-in
   ansible.builtin.template:

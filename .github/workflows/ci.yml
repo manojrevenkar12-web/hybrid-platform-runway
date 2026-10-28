@@ -133,7 +133,7 @@ jobs:
             kubectl kustomize "$o" > /tmp/rendered.yaml
             scripts/annotate_on_failure.sh "kubeconform $o" ./kubeconform -strict -summary -output text -kubernetes-version 1.30.0 \
               -schema-location default \
-              -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+              -schema-location 'platform/schemas/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
               /tmp/rendered.yaml
           done
           scripts/annotate_on_failure.sh "kubeconform argo" ./kubeconform -strict -summary -output text -schema-location default \
@@ -213,3 +213,28 @@ jobs:
           echo "hq frozen=$frozen factory=$factory override=$override"
           [ $frozen -ne 0 ] && [ $factory -eq 0 ] && [ $override -eq 0 ] || { echo "::error title=freeze gate::hq=$frozen factory=$factory override=$override"; exit 1; }
           echo "::notice title=GitLab freeze gate::hq blocked during flight-3, factory open, emergency override recorded"
+
+  console:
+    name: console (typecheck, unit tests, build, Playwright against the runway API)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: python -m venv .venv && .venv/bin/pip install -e .
+      - working-directory: web
+        run: |
+          npm ci
+          ../scripts/annotate_on_failure.sh "typecheck" npm run typecheck
+          ../scripts/annotate_on_failure.sh "unit tests" npm test
+          npm run build
+          npx playwright install --with-deps chromium
+          npx playwright test
+      - name: Console image builds
+        run: docker build -f deploy/console.Dockerfile -t runway-console:ci .

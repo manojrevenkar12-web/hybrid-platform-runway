@@ -1,0 +1,158 @@
+.frame {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.labels {
+  border-right: 1px solid var(--line);
+}
+
+.laneLabel {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--s4);
+  font-weight: 600;
+  border-top: 1px solid var(--line);
+}
+
+.scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.canvas {
+  position: relative;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  border-left: 1px dashed var(--line);
+}
+
+.tick span {
+  position: absolute;
+  top: var(--s3);
+  left: var(--s1);
+  white-space: nowrap;
+  font-size: var(--t-small);
+  color: var(--ink-soft);
+}
+
+.lane {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--line);
+}
+
+.freeze {
+  position: absolute;
+  background: var(--hatch);
+  border-left: 2px solid var(--freeze);
+  border-right: 2px solid var(--freeze);
+}
+
+.freezeName {
+  position: absolute;
+  top: var(--s1);
+  left: var(--s2);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--freeze);
+  white-space: nowrap;
+}
+
+.t0 {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--freeze);
+}
+
+.skipped {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid var(--freeze);
+  transform: translateX(-3px);
+}
+
+.wave {
+  position: absolute;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-size: var(--t-small);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wave:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.done {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.selected {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.today {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  background: var(--ink);
+}
+
+.legend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  border-top: 1px solid var(--line);
+  font-size: var(--t-small);
+  color: var(--ink-soft);
+}
+
+.keyWave,
+.keyFreeze,
+.keySkip {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  margin-left: var(--s3);
+}
+
+.keyWave {
+  background: var(--accent-wash);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+}
+
+.keyFreeze {
+  background: var(--hatch);
+  border: 1px solid var(--freeze);
+}
+
+.keySkip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid var(--freeze);
+}

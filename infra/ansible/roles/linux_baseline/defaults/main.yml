@@ -16,4 +16,7 @@ linux_baseline_sysctl:
   kernel.dmesg_restrict: 1
   fs.protected_hardlinks: 1
   fs.protected_symlinks: 1
-linux_baseline_packages_common: [chrony, auditd, rsyslog, sudo, curl]
+# package names differ: RHEL ships audit and curl-minimal, Debian auditd and curl
+linux_baseline_packages:
+  RedHat: [chrony, audit, rsyslog, sudo]
+  Debian: [chrony, auditd, rsyslog, sudo, curl]

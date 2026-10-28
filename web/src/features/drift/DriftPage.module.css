@@ -1,0 +1,27 @@
+.page {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--s4) var(--s5);
+}
+
+.lead {
+  margin: 0 0 var(--s4);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--s2) var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+.have {
+  color: var(--blocked);
+  font-weight: 600;
+}

@@ -1,0 +1,62 @@
+.skeleton {
+  padding: var(--s4);
+  display: grid;
+  gap: var(--s4);
+}
+
+.skeletonRow {
+  display: grid;
+  gap: var(--s2);
+}
+
+.bar {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-control);
+  background: linear-gradient(90deg, var(--panel-sunk), var(--line), var(--panel-sunk));
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.error,
+.empty {
+  padding: var(--s6) var(--s5);
+  max-width: 36ch;
+}
+
+.error .title {
+  color: var(--danger);
+}
+
+.title {
+  font-size: var(--t-title);
+  line-height: var(--lh-tight);
+  font-weight: 700;
+  margin: 0 0 var(--s2);
+}
+
+.detail {
+  color: var(--ink-soft);
+  margin: 0 0 var(--s4);
+}
+
+.retry {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: var(--radius-control);
+  padding: var(--s2) var(--s4);
+  cursor: pointer;
+}
+
+.retry:hover {
+  border-color: var(--ink-soft);
+}

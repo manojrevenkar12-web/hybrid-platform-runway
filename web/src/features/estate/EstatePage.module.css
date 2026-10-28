@@ -1,0 +1,134 @@
+.page {
+  display: grid;
+  gap: var(--s4);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s4);
+  align-items: end;
+  justify-content: space-between;
+}
+
+.segments {
+  display: flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.segments button {
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  padding: var(--s2) var(--s4);
+  cursor: pointer;
+}
+
+.segments button:last-child {
+  border-right: 0;
+}
+
+.on {
+  background: var(--ink) !important;
+  color: var(--paper);
+  font-weight: 600;
+}
+
+.search {
+  display: grid;
+  gap: var(--s1);
+  font-size: var(--t-small);
+  color: var(--ink-soft);
+}
+
+.search input {
+  min-width: 16rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--s2) var(--s3);
+  background: var(--panel);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table caption {
+  text-align: left;
+  padding: var(--s3) var(--s4);
+  color: var(--ink-soft);
+  font-size: var(--t-small);
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--s2) var(--s4);
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.table thead th {
+  font-size: var(--t-small);
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.vmLink {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.vmLink:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.cap {
+  text-transform: capitalize;
+}
+
+.why {
+  color: var(--ink-soft);
+  max-width: 28rem;
+}
+
+.verdict {
+  white-space: nowrap;
+  font-size: var(--t-small);
+  font-weight: 600;
+  padding: 0 var(--s2);
+  border-radius: var(--radius);
+}
+
+.auto {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.attention {
+  background: var(--attention-wash);
+  color: var(--attention);
+}
+
+.blocked {
+  background: var(--blocked-wash);
+  color: var(--blocked);
+}

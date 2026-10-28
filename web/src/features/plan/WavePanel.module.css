@@ -1,0 +1,123 @@
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--s4) var(--s5);
+}
+
+.head h2 {
+  margin: 0;
+  font-size: var(--t-display);
+  line-height: var(--lh-tight);
+}
+
+.head h2 span {
+  font-size: var(--t-body);
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin-left: var(--s2);
+}
+
+.head p {
+  margin: var(--s1) 0 var(--s4);
+  color: var(--ink-soft);
+}
+
+.bar {
+  height: 8px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(-45deg, var(--panel-sunk) 0 4px, var(--line) 4px 8px);
+  overflow: hidden;
+}
+
+.used {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+}
+
+.budget p {
+  margin: var(--s2) 0 0;
+  font-size: var(--t-small);
+  color: var(--ink-soft);
+}
+
+.groups {
+  margin: var(--s4) 0;
+}
+
+.run {
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
+  padding: var(--s2) var(--s4);
+  cursor: pointer;
+}
+
+.run:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.problem {
+  color: var(--blocked);
+}
+
+.vms {
+  list-style: none;
+  margin: var(--s4) 0 0;
+  padding: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+}
+
+.vms li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--s3);
+  align-items: center;
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.vm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node {
+  font-size: var(--t-small);
+  color: var(--ink-soft);
+}
+
+.result {
+  font-size: var(--t-small);
+  font-weight: 600;
+  padding: 0 var(--s2);
+  border-radius: var(--radius);
+}
+
+.done {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.rolled_back {
+  background: var(--attention-wash);
+  color: var(--attention);
+}
+
+.needs_person {
+  background: var(--blocked-wash);
+  color: var(--blocked);
+}
+
+.skipped {
+  background: var(--panel-sunk);
+  color: var(--ink-soft);
+}

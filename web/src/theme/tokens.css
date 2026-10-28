@@ -1,0 +1,128 @@
+/*
+ * Runway's palette is a range-control sheet: cool chart paper, dark ink, teal for what has moved,
+ * and safety orange with hazard hatching for launch freezes, the one thing nobody may touch.
+ */
+:root {
+  --paper: #edf1f5;
+  --panel: #ffffff;
+  --panel-sunk: #f5f7fa;
+  --ink: #0f1b2d;
+  --ink-soft: #4b5a6e;
+  --line: #d3dbe5;
+  --accent: #0f766e;
+  --accent-ink: #ffffff;
+  --accent-wash: #d7efeb;
+  --freeze: #d9480f;
+  --freeze-wash: #fde9de;
+  --attention: #9a5b00;
+  --attention-wash: #fdf1d8;
+  --blocked: #b42318;
+  --blocked-wash: #fde8e6;
+  --focus: #1d5fd1;
+
+  --font: "Hanken Grotesk", system-ui, sans-serif;
+  /* type scale 13 / 15 / 18 / 24 / 34 */
+  --t-small: 0.8125rem;
+  --t-body: 0.9375rem;
+  --t-title: 1.125rem;
+  --t-display: 1.5rem;
+  --t-hero: 2.125rem;
+  --lh-body: 1.5;
+  --lh-tight: 1.2;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+
+  --radius: 6px;
+  --panel-width: 420px;
+  --page-max: 1360px;
+  --lane-height: 56px;
+  --hatch: repeating-linear-gradient(-45deg, var(--freeze-wash) 0 6px, transparent 6px 12px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0b1220;
+    --panel: #121b2c;
+    --panel-sunk: #172238;
+    --ink: #e6edf5;
+    --ink-soft: #9fb0c4;
+    --line: #273449;
+    --accent: #3fc1b0;
+    --accent-ink: #062320;
+    --accent-wash: #12342f;
+    --freeze: #ff8a4c;
+    --freeze-wash: #3a2214;
+    --attention: #f2b84b;
+    --attention-wash: #3a2c10;
+    --blocked: #ff8a7f;
+    --blocked-wash: #3d1d1b;
+    --focus: #8fb4ff;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #0b1220;
+  --panel: #121b2c;
+  --panel-sunk: #172238;
+  --ink: #e6edf5;
+  --ink-soft: #9fb0c4;
+  --line: #273449;
+  --accent: #3fc1b0;
+  --accent-ink: #062320;
+  --accent-wash: #12342f;
+  --freeze: #ff8a4c;
+  --freeze-wash: #3a2214;
+  --attention: #f2b84b;
+  --attention-wash: #3a2c10;
+  --blocked: #ff8a7f;
+  --blocked-wash: #3d1d1b;
+  --focus: #8fb4ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

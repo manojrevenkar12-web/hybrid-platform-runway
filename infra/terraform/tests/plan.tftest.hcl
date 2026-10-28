@@ -1,10 +1,10 @@
-# Plan-only tests with mocked providers: no credentials, no cost. They pin the decisions that
-# must not drift.
+# Tests with mocked providers: no credentials, no cost, nothing created. `apply` against mocks
+# fills in computed values (ARNs, policies) so the assertions can read them.
 mock_provider "aws" {}
 mock_provider "proxmox" {}
 
 run "security_decisions" {
-  command = plan
+  command = apply
 
   assert {
     condition     = alltrue([for v in aws_vpn_connection.site : contains(v.tunnel1_ike_versions, "ikev2") && length(v.tunnel1_ike_versions) == 1 && contains(v.tunnel2_ike_versions, "ikev2") && length(v.tunnel2_ike_versions) == 1 && contains(v.tunnel1_phase1_dh_group_numbers, 20) && v.static_routes_only])

@@ -1,0 +1,85 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: var(--s5);
+}
+
+.cluster {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--s4) var(--s5);
+}
+
+.cluster h2 {
+  margin: 0;
+  font-size: var(--t-title);
+}
+
+.cluster h2 span {
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin-left: var(--s2);
+}
+
+.fine,
+.tight {
+  margin: var(--s1) 0 var(--s4);
+}
+
+.fine {
+  color: var(--ink-soft);
+}
+
+.tight {
+  color: var(--attention);
+  font-weight: 600;
+}
+
+.nodes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s2);
+}
+
+.nodes li {
+  display: grid;
+  grid-template-columns: 8rem minmax(4rem, 1fr) auto;
+  gap: var(--s3);
+  align-items: center;
+}
+
+.name em {
+  display: block;
+  font-style: normal;
+  font-size: var(--t-small);
+  color: var(--accent);
+}
+
+.track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--panel-sunk);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+}
+
+.num {
+  text-align: right;
+  font-size: var(--t-small);
+  color: var(--ink-soft);
+}
+
+.storage {
+  margin: var(--s4) 0 0;
+  font-size: var(--t-small);
+  color: var(--ink-soft);
+}
