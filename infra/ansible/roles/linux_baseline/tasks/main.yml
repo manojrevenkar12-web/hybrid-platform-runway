@@ -40,6 +40,12 @@
     validate: /usr/sbin/sshd -t -f %s
   notify: Reload sshd
 
+- name: Drop-in directory for kernel parameters
+  ansible.builtin.file:
+    path: /etc/sysctl.d
+    state: directory
+    mode: "0755"
+
 - name: Kernel parameters
   ansible.builtin.copy:
     dest: /etc/sysctl.d/90-baseline.conf

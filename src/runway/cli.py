@@ -163,7 +163,9 @@ def main(argv: list[str] | None = None) -> int:
             missing = [names.get(x["schedule"], x["schedule"]) for x in want if x not in have]
             stale = [str(x.get("schedule")) for x in have if x not in want]
             for schedule in stale:
-                print(f"::warning::{a.check}: the window '{schedule}' has ended or changed; regenerate with `runway freeze argocd`")
+                print(
+                    f"::warning::{a.check}: the window '{schedule}' has ended or changed; regenerate with `runway freeze argocd`"
+                )
             if missing:
                 print(f"{a.check} is missing current freezes: {', '.join(missing)}. Regenerate with `runway freeze argocd`.")
                 return 1
