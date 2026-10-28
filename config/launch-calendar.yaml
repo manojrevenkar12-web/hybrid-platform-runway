@@ -1,0 +1,10 @@
+# Planned campaigns. One calendar drives three enforcers: the wave planner, Argo CD sync windows
+# and the GitLab CI freeze gate. Dates are fictional.
+campaigns:
+  - {name: flight-3, t0: "2026-12-10T11:00:00+01:00", sites: [hq, launch]}
+  - {name: flight-4, t0: "2027-03-18T11:00:00+01:00", sites: [hq, launch]}
+  - {name: static-fire-s5, t0: "2027-01-22T09:00:00+01:00", sites: [factory], freeze_before_days: 3, freeze_after_days: 1}
+
+# Other periods when nothing changes, at all sites unless listed.
+blackouts:
+  - {name: year-end, start: "2026-12-21T00:00:00+01:00", end: "2027-01-06T00:00:00+01:00"}

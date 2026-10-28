@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "runway"
+version = "0.1.0"
+description = "Leave VMware for Proxmox VE without touching a launch campaign: inventory, compatibility, wave plans, Terraform and Ansible per VM, cutover with rollback, drift."
+requires-python = ">=3.12"
+dependencies = [
+  "pyvmomi==8.0.3.0.1",
+  "fastapi==0.115.6",
+  "uvicorn==0.34.0",
+  "httpx==0.28.1",
+  "pydantic==2.10.4",
+  "pyyaml==6.0.2",
+  "prometheus-client==0.21.1",
+  "python-multipart==0.0.20",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.4", "ruff==0.17.3", "mypy==1.14.1", "types-PyYAML"]
+
+[project.scripts]
+runway = "runway.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["RUF059"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["runway"]
+mypy_path = "src"
+ignore_missing_imports = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "vcsim: needs a vCenter simulator at RUNWAY_VCENTER_URL (CI runs vmware/vcsim)",
+]
+addopts = "-m 'not vcsim'"

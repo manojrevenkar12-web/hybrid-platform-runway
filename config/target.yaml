@@ -1,0 +1,39 @@
+# The Proxmox VE clusters the estate moves to, per site.
+clusters:
+  - name: pve-hq
+    site: hq
+    nodes:
+      - {name: pve-hq-01, cores: 64, memory_gib: 512}
+      - {name: pve-hq-02, cores: 64, memory_gib: 512}
+      - {name: pve-hq-03, cores: 64, memory_gib: 512}
+      - {name: pve-hq-04, cores: 64, memory_gib: 512}
+      - {name: pve-hq-05, cores: 64, memory_gib: 512}
+    storage: {name: ceph-hq, capacity_gib: 61440}
+  - name: pve-factory
+    site: factory
+    nodes:
+      - {name: pve-fac-01, cores: 48, memory_gib: 384}
+      - {name: pve-fac-02, cores: 48, memory_gib: 384}
+      - {name: pve-fac-03, cores: 48, memory_gib: 384}
+    storage: {name: ceph-factory, capacity_gib: 30720}
+  - name: pve-gpu
+    site: hq
+    nodes:
+      - {name: pve-gpu-01, cores: 96, memory_gib: 1024, devices: [gpu-a100]}
+      - {name: pve-gpu-02, cores: 96, memory_gib: 1024, devices: [gpu-a100]}
+    storage: {name: local-nvme, capacity_gib: 15360}
+
+placement:
+  # cpu overcommit allowed on Proxmox (vCPU per physical core); memory is never overcommitted
+  cpu_overcommit: 4.0
+  # after placing every VM, the cluster must still fit them all with its largest node down (N+1)
+  survive_node_loss: true
+
+# vSphere port group -> Proxmox bridge and VLAN (VLAN-aware bridges, one per site)
+network_map:
+  pg-servers-110: {bridge: vmbr0, vlan: 110}
+  pg-db-120: {bridge: vmbr0, vlan: 120}
+  pg-dmz-200: {bridge: vmbr1, vlan: 200}
+  pg-mgmt-10: {bridge: vmbr0, vlan: 10}
+  pg-ot-310: {bridge: vmbr2, vlan: 310}
+  pg-lab-400: {bridge: vmbr0, vlan: 400}

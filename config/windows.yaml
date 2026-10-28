@@ -1,0 +1,19 @@
+# When the platform may change, and when it may not.
+timezone: Europe/Berlin
+
+# Regular change windows: waves only run inside one of these.
+maintenance_windows:
+  - {days: [tue, thu], start: "18:00", hours: 8}
+  - {days: [sat], start: "08:00", hours: 12}
+
+# Copy throughput from ESXi to Proxmox per window, and what each VM costs on top of its copy.
+migration:
+  copy_mib_per_s: 350
+  per_vm_overhead_min: 12        # shutdown, import setup, boot, checks
+  rollback_reserve_share: 0.25   # a quarter of every window stays free for rolling back
+  max_vms_per_wave: 25
+
+# Launch campaigns freeze every change to the platform they depend on.
+freeze_policy:
+  before_days: 14
+  after_days: 2

@@ -1,0 +1,77 @@
+# What decides whether a VM moves to Proxmox VE by itself, needs prepared steps, or is blocked.
+# Every rule names its source. Verdicts: auto < attention < blocked; a VM gets the worst one.
+# Two more checks come from config/target.yaml, not from here: a port group with no network
+# mapping, and a passthrough device no target node has, both block the VM.
+rules:
+  - id: vsan-disk
+    when: {disk_datastore_type: vsan}
+    verdict: blocked
+    why: "The ESXi import wizard cannot read disks on vSAN."
+    action: "Storage vMotion the disks to a VMFS or NFS datastore first, or export as OVF and import."
+    source: https://computingforgeeks.com/migrate-vmware-esxi-to-proxmox-ve/
+  - id: encrypted-disk
+    when: {disk_encrypted: true}
+    verdict: blocked
+    why: "Encrypted disks cannot be read by the import wizard."
+    action: "Decrypt in vCenter or export through OVF/VMDK after decryption."
+    source: https://computingforgeeks.com/migrate-vmware-esxi-to-proxmox-ve/
+  - id: rdm-disk
+    when: {disk_backing: rdm}
+    verdict: blocked
+    why: "A raw device mapping is a LUN, not a file the importer can copy."
+    action: "Storage team presents the LUN to the Proxmox nodes (iSCSI/FC) and maps it to the VM by hand."
+    source: https://pve.proxmox.com/wiki/Migrate_to_Proxmox_VE
+  - id: pci-passthrough
+    when: {has_passthrough: true}
+    verdict: attention
+    why: "A passed-through device (GPU, FPGA, NIC) is bound to its host; the VM can only run where the device is."
+    action: "Map the device on the target node (Proxmox resource mapping); runway places the VM on a node that has it."
+    source: https://pve.proxmox.com/wiki/PCI_Passthrough
+  - id: datastore-plus
+    when: {disk_datastore_name_contains: "+"}
+    verdict: blocked
+    why: "A datastore name containing '+' can break the import wizard."
+    action: "Rename the datastore on the ESXi side."
+    source: https://computingforgeeks.com/migrate-vmware-esxi-to-proxmox-ve/
+  - id: independent-disk
+    when: {disk_mode: independent}
+    verdict: attention
+    why: "Independent disks are skipped by snapshots and often hold scratch or database data."
+    action: "Confirm with the owner whether the disk moves; copy it explicitly if it does."
+    source: https://pve.proxmox.com/wiki/Migrate_to_Proxmox_VE
+  - id: snapshots
+    when: {snapshots_min: 1}
+    verdict: attention
+    why: "Each snapshot delta must be collapsed during import, which makes it much slower."
+    action: "Consolidate (delete) snapshots before the window."
+    source: https://computingforgeeks.com/migrate-vmware-esxi-to-proxmox-ve/
+  - id: windows-virtio
+    when: {guest_family: windows}
+    verdict: attention
+    why: "Windows has no VirtIO drivers; a boot disk on VirtIO stops with INACCESSIBLE_BOOT_DEVICE."
+    action: "Boot from SATA, install the VirtIO drivers from the ISO, then move the disk to VirtIO SCSI."
+    source: https://computingforgeeks.com/migrate-vmware-esxi-to-proxmox-ve/
+  - id: vtpm
+    when: {vtpm: true}
+    verdict: attention
+    why: "The vTPM state does not travel; BitLocker or measured boot will ask for recovery."
+    action: "Escrow the BitLocker recovery key and suspend protection before the window; add a TPM state disk."
+    source: https://pve.proxmox.com/wiki/Migrate_to_Proxmox_VE
+  - id: efi-firmware
+    when: {firmware: efi}
+    verdict: auto
+    why: "A VM that booted UEFI needs OVMF and an EFI disk, not SeaBIOS."
+    action: "Generated: bios = ovmf, efi_disk added."
+    source: https://computingforgeeks.com/migrate-vmware-esxi-to-proxmox-ve/
+  - id: linux-nic-rename
+    when: {guest_family: linux}
+    verdict: auto
+    why: "The interface name inside the guest almost always changes; configs naming the old one lose the network."
+    action: "Generated: Ansible rewrites netplan/ifcfg/interfaces to match by MAC address."
+    source: https://computingforgeeks.com/migrate-vmware-esxi-to-proxmox-ve/
+  - id: vmware-tools
+    when: {tools_installed: true}
+    verdict: auto
+    why: "VMware Tools keep calling hypervisor channels that no longer exist."
+    action: "Generated: Ansible removes open-vm-tools and installs and enables qemu-guest-agent."
+    source: https://computingforgeeks.com/migrate-vmware-esxi-to-proxmox-ve/
