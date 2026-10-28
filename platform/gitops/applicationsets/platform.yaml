@@ -1,0 +1,28 @@
+# One ApplicationSet per platform service, one Application per site cluster.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: runway
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - list:
+        elements:
+          - {cluster: ocp-hq, server: "https://api.ocp-hq.hq.example:6443", overlay: openshift}
+          - {cluster: ocp-factory, server: "https://api.ocp-factory.factory.example:6443", overlay: openshift}
+  template:
+    metadata:
+      name: "runway-{{ .cluster }}"
+    spec:
+      project: platform
+      source:
+        repoURL: https://github.com/manojrevenkar12-web/hybrid-platform-runway
+        targetRevision: main
+        path: "platform/gitops/apps/runway/overlays/{{ .overlay }}"
+      destination:
+        server: "{{ .server }}"
+        namespace: runway
+      syncPolicy:
+        automated: {prune: true, selfHeal: true}
+        syncOptions: [CreateNamespace=true]

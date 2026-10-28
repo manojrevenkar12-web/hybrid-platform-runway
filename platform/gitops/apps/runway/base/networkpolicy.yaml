@@ -1,0 +1,20 @@
+# Only the console and the monitoring namespace may call runway; runway may call DNS, vCenter and
+# the Proxmox API (port 8006) and nothing else.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: runway
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: runway}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/name: runway-console}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: monitoring}
+      ports: [{port: 8070}]
+  egress:
+    - ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+    - ports: [{port: 443}, {port: 8006}]

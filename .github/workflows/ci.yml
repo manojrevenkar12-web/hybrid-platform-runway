@@ -114,3 +114,78 @@ jobs:
       - run: ../../scripts/annotate_on_failure.sh "bicep build" az bicep build --file main.bicep --stdout > /dev/null
       - run: ../../scripts/annotate_on_failure.sh "bicep lint" az bicep lint --file main.bicep
       - run: ../../scripts/annotate_on_failure.sh "bicep params" az bicep build-params --file main.bicepparam --stdout > /dev/null
+
+  gitops:
+    name: gitops on kind (Argo CD sync, launch freeze blocks a sync, OpenShift manifests)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Committed AppProject enforces every current freeze
+        run: scripts/annotate_on_failure.sh "freeze drift" runway freeze argocd --check platform/gitops/projects/platform.yaml
+      - name: OpenShift and kind overlays are valid (kubeconform, OpenShift CRD schemas)
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+          for o in platform/gitops/apps/*/overlays/*; do
+            kubectl kustomize "$o" | ./kubeconform -strict -summary -kubernetes-version 1.30.0 \
+              -schema-location default \
+              -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+              || { echo "::error title=kubeconform::$o"; exit 1; }
+          done
+          ./kubeconform -strict -summary -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            platform/gitops/projects platform/gitops/applicationsets platform/gitops/bootstrap
+      - name: Build the runway image
+        run: docker build -f deploy/runway.Dockerfile -t runway:ci .
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: runway
+      - name: Install Argo CD
+        run: |
+          kubectl create namespace argocd
+          kubectl apply -n argocd --server-side -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.14.0/manifests/install.yaml
+          kubectl -n argocd rollout status deploy/argocd-repo-server --timeout=300s
+          kubectl -n argocd rollout status deploy/argocd-applicationset-controller --timeout=300s
+          kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=300s
+          kind load docker-image runway:ci --name runway
+      - name: Argo CD syncs runway from this commit
+        run: |
+          runway freeze argocd > /tmp/project.yaml
+          kubectl apply -f /tmp/project.yaml
+          cat <<YAML | kubectl apply -f -
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata: {name: runway, namespace: argocd}
+          spec:
+            project: platform
+            source: {repoURL: "https://github.com/${{ github.repository }}", targetRevision: "${{ github.sha }}", path: platform/gitops/apps/runway/overlays/kind}
+            destination: {server: "https://kubernetes.default.svc", namespace: runway}
+            syncPolicy: {automated: {prune: true, selfHeal: true}, syncOptions: [CreateNamespace=true]}
+          YAML
+          for i in $(seq 1 60); do
+            h=$(kubectl -n argocd get application runway -o jsonpath='{.status.health.status}/{.status.sync.status}' 2>/dev/null || true)
+            [ "$h" = "Healthy/Synced" ] && break; sleep 5
+          done
+          kubectl -n argocd get application runway -o jsonpath='{.status.health.status}/{.status.sync.status}{"\n"}'
+          [ "$h" = "Healthy/Synced" ] || { kubectl -n argocd get application runway -o yaml | tail -40 | scripts/annotate_on_failure.sh "argo cd sync" sh -c 'cat; exit 1'; }
+          kubectl -n runway port-forward svc/runway 8070:8070 >/dev/null 2>&1 &
+          sleep 3
+          curl -sf localhost:8070/api/summary | python3 -c "import json,sys;d=json.load(sys.stdin);print('::notice title=runway on kind::'+str(d['estate']['vms'])+' VMs, '+str(d['plan']['waves'])+' waves')"
+      - name: A launch freeze blocks the next sync
+        run: |
+          mkdir -p /tmp/frozen && ci/kind/freeze-config.sh /tmp/frozen
+          RUNWAY_CONFIG=/tmp/frozen runway freeze argocd > /tmp/frozen-project.yaml
+          kubectl apply -f /tmp/frozen-project.yaml
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.14.0/argocd-linux-amd64 && chmod +x argocd
+          kubectl config set-context --current --namespace=argocd
+          set +e
+          out=$(./argocd app sync runway --core 2>&1); code=$?
+          set -e
+          echo "$out"
+          if [ $code -eq 0 ] || ! echo "$out" | grep -qi "sync window"; then
+            echo "::error title=launch freeze::Argo CD synced during a launch freeze"; exit 1
+          fi
+          echo "::notice title=launch freeze::Argo CD refused to sync during the ci-flight freeze: $(echo "$out" | grep -i 'sync window' | head -1)"

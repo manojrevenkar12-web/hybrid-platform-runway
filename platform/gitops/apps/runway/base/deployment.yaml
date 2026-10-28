@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: runway
+  labels: {app.kubernetes.io/name: runway, app.kubernetes.io/part-of: hybrid-platform}
+spec:
+  replicas: 1   # the cutover journal is single-writer; scale the console, not this
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/name: runway}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: runway, app.kubernetes.io/part-of: hybrid-platform}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: runway
+          image: runway
+          ports: [{name: http, containerPort: 8070}]
+          env:
+            - {name: RUNWAY_PLAN_START, value: "2026-11-16T00:00:00+01:00"}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 20
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 512Mi}

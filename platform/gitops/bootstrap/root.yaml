@@ -1,0 +1,20 @@
+# The one thing applied by hand on a new Argo CD: everything else comes from Git.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/manojrevenkar12-web/hybrid-platform-runway
+    targetRevision: main
+    path: platform/gitops
+    directory:
+      recurse: true
+      include: "{projects/*.yaml,applicationsets/*.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated: {prune: false, selfHeal: true}

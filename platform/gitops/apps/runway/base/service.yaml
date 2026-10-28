@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: runway
+  labels: {app.kubernetes.io/name: runway}
+spec:
+  selector: {app.kubernetes.io/name: runway}
+  ports: [{name: http, port: 8070, targetPort: http}]

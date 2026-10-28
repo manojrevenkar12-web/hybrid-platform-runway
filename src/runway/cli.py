@@ -62,6 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     f.add_argument("--site", default="hq")
     f.add_argument("--at", help="ISO time to check instead of now")
     f.add_argument("--clusters", type=Path, default=settings.CONFIG_DIR / "gitops.yaml")
+    f.add_argument("--check", type=Path, help="argocd: compare a committed AppProject with the calendar instead of printing one")
 
     sub.add_parser("serve", help="the API behind the console").add_argument("--port", type=int, default=8070)
 
@@ -155,6 +156,18 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
         clusters = yaml.safe_load(a.clusters.read_text())["site_clusters"]
+        if a.what == "argocd" and a.check:
+            want = freeze.argocd_sync_windows(w, clusters, now)
+            have = yaml.safe_load(a.check.read_text())["spec"].get("syncWindows", [])
+            missing = [x["description"] for x in want if x not in have]
+            stale = [x.get("description", x.get("schedule")) for x in have if x not in want]
+            for d in stale:
+                print(f"::warning::{a.check}: '{d}' has ended or changed; regenerate with `runway freeze argocd`")
+            if missing:
+                print(f"{a.check} is missing current freezes: {', '.join(missing)}. Regenerate with `runway freeze argocd`.")
+                return 1
+            print(f"{a.check}: every current freeze is enforced")
+            return 0
         if a.what == "argocd":
             print(yaml.safe_dump(freeze.argocd_project(w, clusters, now), sort_keys=False))
         else:
