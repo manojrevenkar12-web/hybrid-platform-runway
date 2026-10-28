@@ -201,6 +201,7 @@ def create_app(state: State | None = None) -> FastAPI:
                 for f in a.findings
             ],
             "terraform": translate.terraform_vm(p, s.target.network_map, s.storage[p.cluster]) if p else None,
+            "terraformHcl": translate.hcl({translate.resource_name(a.vm): translate.terraform_vm(p, s.target.network_map, s.storage[p.cluster])}) if p else None,
             "ansible": translate.ansible_vars(a, p) if p else None,
             "steps": s.journal.steps(name),
         }

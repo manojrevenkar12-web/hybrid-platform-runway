@@ -130,12 +130,13 @@ jobs:
         run: |
           curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
           for o in platform/gitops/apps/*/overlays/*; do
-            kubectl kustomize "$o" | ./kubeconform -strict -summary -kubernetes-version 1.30.0 \
+            kubectl kustomize "$o" > /tmp/rendered.yaml
+            scripts/annotate_on_failure.sh "kubeconform $o" ./kubeconform -strict -summary -output text -kubernetes-version 1.30.0 \
               -schema-location default \
               -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
-              || { echo "::error title=kubeconform::$o"; exit 1; }
+              /tmp/rendered.yaml
           done
-          ./kubeconform -strict -summary -schema-location default \
+          scripts/annotate_on_failure.sh "kubeconform argo" ./kubeconform -strict -summary -output text -schema-location default \
             -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             platform/gitops/projects platform/gitops/applicationsets platform/gitops/bootstrap
       - name: Build the runway image
