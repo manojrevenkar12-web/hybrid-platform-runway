@@ -25,6 +25,11 @@ jobs:
         run: |
           scripts/annotate_on_failure.sh "cutover drill" runway drill --out reports/drill.json > /dev/null
           python3 -c "import json;print('::notice title=cutover drill::'+json.load(open('reports/drill.json'))['headline'])"
+      - name: Blind held-out sets (first runs, pinned)
+        run: |
+          for f in reports/heldout/*/first_run.json; do
+            python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print('::notice title=held-out '+d['set']+' first run::'+d['headline'])" "$f"
+          done
 
   vsphere:
     name: inventory against vcsim (VMware vCenter simulator)

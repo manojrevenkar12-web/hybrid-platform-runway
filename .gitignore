@@ -13,3 +13,4 @@ web/dist/
 web/playwright-report/
 web/test-results/
 *.tsbuildinfo
+reports/drill.json
