@@ -1,0 +1,539 @@
+# Written blind from heldout/WRITING_CASES.md on 2026-10-28.
+# Move time per VM (minutes) = disk_gib * 1024 / copy_mib_per_s / 60 + per_vm_overhead_min.
+# At 300 MiB/s and 10 min overhead: 0 GiB 10.00, 40 GiB 12.28, 50 GiB 12.84, 60 GiB 13.41, 80 GiB 14.55,
+# 100 GiB 15.69, 200 GiB 21.38, 300 GiB 27.07, 400 GiB 32.76, 500 GiB 38.44, 2000 GiB 123.78,
+# 2500 GiB 152.22, 3000 GiB 180.67, 3500 GiB 209.11, 4000 GiB 237.56.
+scenarios:
+  # ---------------------------------------------------------------------------------------------
+  - id: s01
+    description: Database and app tier at hq fit in the first window together; the app's dependency on a vSAN-blocked cache is ignored.
+    # Windows: Tue 2, 9, 16, 23 Feb 18:00-24:00, budget 360 * 0.75 = 270 min.
+    # Movable: db 400 GiB 32.76 + app 100 GiB 15.69 * 2 = 64.13 min, 3 VMs <= 10, all in Tue 2 Feb.
+    # Memory 32 + 16 + 16 = 64 <= 768 - 256 = 512.
+    start: "2027-02-01T00:00:00+01:00"
+    until: "2027-03-01T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [tue], start: "18:00", hours: 6}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 10}
+    campaigns: []
+    blackouts: []
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 10000, nodes: [{name: n1, cores: 32, memory_gib: 256, devices: []}, {name: n2, cores: 32, memory_gib: 256, devices: []}, {name: n3, cores: 32, memory_gib: 256, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - name: hq-erp-db-01
+        guest_family: linux
+        guest_id: rhel9_64Guest
+        cpus: 4
+        memory_gib: 32
+        firmware: bios
+        vtpm: false
+        snapshots: 0
+        tools_installed: true
+        passthrough: []
+        site: hq
+        disks:
+          - {label: "Hard disk 1", size_gib: 400, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        nics:
+          - {portgroup: pg-db-120, mac: "00:50:56:10:01:01"}
+        app: erp-db
+        depends_on: []
+      - name: hq-erp-app-01
+        guest_family: windows
+        guest_id: windows2022srvNext_64Guest
+        cpus: 8
+        memory_gib: 16
+        firmware: efi
+        vtpm: false
+        snapshots: 0
+        tools_installed: true
+        passthrough: []
+        site: hq
+        disks:
+          - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        nics:
+          - {portgroup: pg-servers-110, mac: "00:50:56:10:01:02"}
+        app: erp-app
+        depends_on: [erp-db, erp-cache]
+      - name: hq-erp-app-02
+        guest_family: windows
+        guest_id: windows2022srvNext_64Guest
+        cpus: 8
+        memory_gib: 16
+        firmware: efi
+        vtpm: false
+        snapshots: 0
+        tools_installed: true
+        passthrough: []
+        site: hq
+        disks:
+          - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        nics:
+          - {portgroup: pg-servers-110, mac: "00:50:56:10:01:03"}
+        app: erp-app
+        depends_on: [erp-db, erp-cache]
+      - name: hq-erp-cache-01
+        guest_family: linux
+        guest_id: rhel9_64Guest
+        cpus: 4
+        memory_gib: 32
+        firmware: bios
+        vtpm: false
+        snapshots: 0
+        tools_installed: true
+        passthrough: []
+        site: hq
+        disks:
+          - {label: "Hard disk 1", size_gib: 50, datastore: vsanDatastore, datastore_type: vsan, mode: persistent, backing: flat, encrypted: false}
+        nics:
+          - {portgroup: pg-servers-110, mac: "00:50:56:10:01:04"}
+        app: erp-cache
+        depends_on: []
+    expect:
+      placed: [hq-erp-db-01, hq-erp-app-01, hq-erp-app-02]
+      blocked: [hq-erp-cache-01]
+      order: [[erp-db, erp-app]]
+      waves_at_most: 1
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s02
+    description: An hq campaign freeze and a partly overlapping blackout leave hq two usable windows, too few for a three-window SAP group.
+    # Windows: Tue/Thu 18:00-24:00 on 2, 4, 9, 11, 16, 18, 23, 25 Feb; budget 270 min.
+    # Campaign q1-close (hq): 2027-02-03T09:00 .. 2027-02-22T09:00 removes 4, 9, 11, 16, 18 Feb for hq.
+    # Blackout dc-power-work (hq): 25 Feb 20:00 .. 26 Feb 02:00 overlaps the 25 Feb window, removed for hq.
+    # hq usable: 2 Feb and 23 Feb only. SAP VMs are 3000 GiB = 180.67 min each; two would be 361.3 > 270,
+    # so one per window and three windows are needed -> sap-s4 unplaced. Factory is not frozen.
+    start: "2027-02-01T00:00:00+01:00"
+    until: "2027-03-01T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [tue, thu], start: "18:00", hours: 6}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 10}
+    campaigns: [{name: q1-close, t0: "2027-02-12T09:00:00+01:00", sites: [hq], before_days: 9, after_days: 10}]
+    blackouts: [{name: dc-power-work, start: "2027-02-25T20:00:00+01:00", end: "2027-02-26T02:00:00+01:00", sites: [hq]}]
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 20000, nodes: [{name: n1, cores: 64, memory_gib: 512, devices: []}, {name: n2, cores: 64, memory_gib: 512, devices: []}, {name: n3, cores: 64, memory_gib: 512, devices: []}]}
+      - {name: pve-factory, site: factory, storage_gib: 8000, nodes: [{name: f1, cores: 32, memory_gib: 128, devices: []}, {name: f2, cores: 32, memory_gib: 128, devices: []}, {name: f3, cores: 32, memory_gib: 128, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - name: hq-sap-s4-db-01
+        guest_family: linux
+        guest_id: sles15_64Guest
+        cpus: 32
+        memory_gib: 256
+        firmware: efi
+        vtpm: false
+        snapshots: 0
+        tools_installed: true
+        passthrough: []
+        site: hq
+        disks:
+          - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+          - {label: "Hard disk 2", size_gib: 2900, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        nics:
+          - {portgroup: pg-db-120, mac: "00:50:56:10:02:01"}
+        app: sap-s4
+        depends_on: []
+      - name: hq-sap-s4-app-01
+        guest_family: linux
+        guest_id: sles15_64Guest
+        cpus: 16
+        memory_gib: 64
+        firmware: efi
+        vtpm: false
+        snapshots: 0
+        tools_installed: true
+        passthrough: []
+        site: hq
+        disks:
+          - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+          - {label: "Hard disk 2", size_gib: 2900, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        nics:
+          - {portgroup: pg-servers-110, mac: "00:50:56:10:02:02"}
+        app: sap-s4
+        depends_on: []
+      - name: hq-sap-s4-app-02
+        guest_family: linux
+        guest_id: sles15_64Guest
+        cpus: 16
+        memory_gib: 64
+        firmware: efi
+        vtpm: false
+        snapshots: 0
+        tools_installed: true
+        passthrough: []
+        site: hq
+        disks:
+          - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+          - {label: "Hard disk 2", size_gib: 2900, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        nics:
+          - {portgroup: pg-servers-110, mac: "00:50:56:10:02:03"}
+        app: sap-s4
+        depends_on: []
+      - name: hq-intranet-01
+        guest_family: linux
+        guest_id: debian12_64Guest
+        cpus: 2
+        memory_gib: 8
+        firmware: bios
+        vtpm: false
+        snapshots: 0
+        tools_installed: true
+        passthrough: []
+        site: hq
+        disks:
+          - {label: "Hard disk 1", size_gib: 50, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        nics:
+          - {portgroup: pg-servers-110, mac: "00:50:56:10:02:04"}
+        app: intranet
+        depends_on: []
+      - name: factory-mes-line2-01
+        guest_family: linux
+        guest_id: rhel8_64Guest
+        cpus: 4
+        memory_gib: 16
+        firmware: bios
+        vtpm: false
+        snapshots: 0
+        tools_installed: true
+        passthrough: []
+        site: factory
+        disks:
+          - {label: "Hard disk 1", size_gib: 100, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        nics:
+          - {portgroup: pg-ot-310, mac: "00:50:56:10:02:05"}
+        app: mes-line2
+        depends_on: []
+    expect:
+      unplaced: [sap-s4]
+      placed: [hq-intranet-01, factory-mes-line2-01]
+      no_wave_between:
+        - ["2027-02-03T09:00:00+01:00", "2027-02-22T09:00:00+01:00", hq]
+        - ["2027-02-25T20:00:00+01:00", "2027-02-26T02:00:00+01:00", hq]
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s03
+    description: Lose-a-node rule with an exact fit at hq and a factory group that fits the nodes but not with its 512 GiB node lost.
+    # hq: 3 x 256 GiB -> 768 - 256 = 512. erp 5 x 100 + monitoring 12 = 512 <= 512 -> all placed.
+    # factory: 512 + 256 + 256 = 1024 - 512 = 512. mes 5 x 110 = 550 > 512 -> unplaced, although the
+    # nodes alone hold it (f1 four, f2 two, f3 two) and 1024 - 256 (smallest node) = 768 would.
+    # ntp 4 GiB: even with four mes VMs left placed, 440 + 4 = 444 <= 512 -> placed.
+    # Windows: Sat 9, 16, 23, 30 Jan 08:00-18:00, budget 450 min; 200 GiB VMs take 21.38 min.
+    start: "2027-01-04T00:00:00+01:00"
+    until: "2027-02-01T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [sat], start: "08:00", hours: 10}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 10}
+    campaigns: []
+    blackouts: []
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 20000, nodes: [{name: n1, cores: 48, memory_gib: 256, devices: []}, {name: n2, cores: 48, memory_gib: 256, devices: []}, {name: n3, cores: 48, memory_gib: 256, devices: []}]}
+      - {name: pve-factory, site: factory, storage_gib: 20000, nodes: [{name: f1, cores: 64, memory_gib: 512, devices: []}, {name: f2, cores: 32, memory_gib: 256, devices: []}, {name: f3, cores: 32, memory_gib: 256, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - {name: hq-erp-01, guest_family: linux, guest_id: rhel9_64Guest, cpus: 8, memory_gib: 100, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:03:01"}], app: erp, depends_on: []}
+      - {name: hq-erp-02, guest_family: linux, guest_id: rhel9_64Guest, cpus: 8, memory_gib: 100, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:03:02"}], app: erp, depends_on: []}
+      - {name: hq-erp-03, guest_family: linux, guest_id: rhel9_64Guest, cpus: 8, memory_gib: 100, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:03:03"}], app: erp, depends_on: []}
+      - {name: hq-erp-04, guest_family: linux, guest_id: rhel9_64Guest, cpus: 8, memory_gib: 100, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:03:04"}], app: erp, depends_on: []}
+      - {name: hq-erp-05, guest_family: linux, guest_id: rhel9_64Guest, cpus: 8, memory_gib: 100, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:03:05"}], app: erp, depends_on: []}
+      - {name: hq-erp-mon-01, guest_family: linux, guest_id: ubuntu64Guest, cpus: 4, memory_gib: 12, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 50, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-mgmt-10, mac: "00:50:56:10:03:06"}], app: erp-monitoring, depends_on: []}
+      - {name: factory-mes-01, guest_family: linux, guest_id: rhel8_64Guest, cpus: 8, memory_gib: 110, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 200, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:03:11"}], app: mes, depends_on: []}
+      - {name: factory-mes-02, guest_family: linux, guest_id: rhel8_64Guest, cpus: 8, memory_gib: 110, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 200, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:03:12"}], app: mes, depends_on: []}
+      - {name: factory-mes-03, guest_family: linux, guest_id: rhel8_64Guest, cpus: 8, memory_gib: 110, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 200, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:03:13"}], app: mes, depends_on: []}
+      - {name: factory-mes-04, guest_family: linux, guest_id: rhel8_64Guest, cpus: 8, memory_gib: 110, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 200, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:03:14"}], app: mes, depends_on: []}
+      - {name: factory-mes-05, guest_family: linux, guest_id: rhel8_64Guest, cpus: 8, memory_gib: 110, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 200, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:03:15"}], app: mes, depends_on: []}
+      - {name: factory-ntp-01, guest_family: linux, guest_id: debian12_64Guest, cpus: 1, memory_gib: 4, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 16, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:03:16"}], app: ntp, depends_on: []}
+    expect:
+      unplaced: [mes]
+      placed: [hq-erp-01, hq-erp-02, hq-erp-03, hq-erp-04, hq-erp-05, hq-erp-mon-01, factory-ntp-01]
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s04
+    description: A data-warehouse group needs three windows and must skip a blackout; its ETL dependent has to share the group's last window.
+    # copy 400 MiB/s, overhead 15 min: 4000 GiB = 170.67 + 15 = 185.67 min; 100 GiB = 4.27 + 15 = 19.27 min.
+    # Windows Wed 3, 10, 17, 24 Mar 19:00-24:00 (until 27 Mar, before DST), budget 300 * 0.8 = 240 min.
+    # Blackout pentest (hq) 10 Mar 00:00 .. 11 Mar 00:00 removes 10 Mar. Usable: 3, 17, 24 Mar.
+    # Two dwh VMs = 371.3 > 240 -> one per window -> dwh uses 3, 17 and 24 Mar (all usable windows).
+    # dwh-etl must follow dwh; only 24 Mar remains: 185.67 + 19.27 = 204.93 <= 240, so it fits there.
+    start: "2027-03-01T00:00:00+01:00"
+    until: "2027-03-27T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [wed], start: "19:00", hours: 5}]
+    migration: {copy_mib_per_s: 400, per_vm_overhead_min: 15, rollback_reserve_share: 0.2, max_vms_per_wave: 10}
+    campaigns: []
+    blackouts: [{name: pentest, start: "2027-03-10T00:00:00+01:00", end: "2027-03-11T00:00:00+01:00", sites: [hq]}]
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 20000, nodes: [{name: n1, cores: 64, memory_gib: 512, devices: []}, {name: n2, cores: 64, memory_gib: 512, devices: []}, {name: n3, cores: 64, memory_gib: 512, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - {name: hq-dwh-01, guest_family: linux, guest_id: rhel9_64Guest, cpus: 16, memory_gib: 128, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}, {label: "Hard disk 2", size_gib: 3800, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:04:01"}], app: dwh, depends_on: []}
+      - {name: hq-dwh-02, guest_family: linux, guest_id: rhel9_64Guest, cpus: 16, memory_gib: 128, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}, {label: "Hard disk 2", size_gib: 3800, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:04:02"}], app: dwh, depends_on: []}
+      - {name: hq-dwh-03, guest_family: linux, guest_id: rhel9_64Guest, cpus: 16, memory_gib: 128, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}, {label: "Hard disk 2", size_gib: 3800, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:04:03"}], app: dwh, depends_on: []}
+      - {name: hq-dwh-etl-01, guest_family: linux, guest_id: rhel9_64Guest, cpus: 8, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 100, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:04:04"}], app: dwh-etl, depends_on: [dwh]}
+    expect:
+      placed: [hq-dwh-01, hq-dwh-02, hq-dwh-03, hq-dwh-etl-01]
+      order: [[dwh, dwh-etl]]
+      no_wave_between:
+        - ["2027-03-10T00:00:00+01:00", "2027-03-11T00:00:00+01:00", hq]
+      waves_at_most: 3
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s05
+    description: GPU placement where only one hq node has an A100, a factory GPU VM with no device node at its site, and an H100 VM that is blocked.
+    # hq: n3 is the only node with gpu-a100 and the only node with >= 300 GiB, so hq-gpu-train-01 fits on n3
+    # under any reading; hq lose-a-node 1024 - 512 = 512 >= 300 + 32. factory has no device node and VMs
+    # never leave their site -> vision-qc unplaced. gpu-h100 exists on no target node -> blocked.
+    # Windows Thu 4, 11, 18, 25 Feb 20:00-24:00, budget 180 min; train 2000 GiB = 123.78 min.
+    start: "2027-02-01T00:00:00+01:00"
+    until: "2027-03-01T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [thu], start: "20:00", hours: 4}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 10}
+    campaigns: []
+    blackouts: []
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 20000, nodes: [{name: n1, cores: 32, memory_gib: 256, devices: []}, {name: n2, cores: 32, memory_gib: 256, devices: []}, {name: n3, cores: 64, memory_gib: 512, devices: [gpu-a100]}]}
+      - {name: pve-factory, site: factory, storage_gib: 10000, nodes: [{name: f1, cores: 32, memory_gib: 128, devices: []}, {name: f2, cores: 32, memory_gib: 128, devices: []}, {name: f3, cores: 32, memory_gib: 128, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - {name: hq-gpu-train-01, guest_family: linux, guest_id: ubuntu64Guest, cpus: 32, memory_gib: 300, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [gpu-a100], site: hq, disks: [{label: "Hard disk 1", size_gib: 2000, datastore: hq-ds-ml, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-lab-400, mac: "00:50:56:10:05:01"}], app: ml-train, depends_on: []}
+      - {name: hq-jupyter-01, guest_family: linux, guest_id: ubuntu64Guest, cpus: 8, memory_gib: 32, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-ml, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-lab-400, mac: "00:50:56:10:05:02"}], app: ml-notebooks, depends_on: []}
+      - {name: hq-gpu-train-02, guest_family: linux, guest_id: ubuntu64Guest, cpus: 32, memory_gib: 128, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [gpu-h100], site: hq, disks: [{label: "Hard disk 1", size_gib: 500, datastore: hq-ds-ml, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-lab-400, mac: "00:50:56:10:05:03"}], app: ml-train-h100, depends_on: []}
+      - {name: factory-vision-qc-01, guest_family: linux, guest_id: ubuntu64Guest, cpus: 16, memory_gib: 64, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [gpu-a100], site: factory, disks: [{label: "Hard disk 1", size_gib: 300, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:05:04"}], app: vision-qc, depends_on: []}
+      - {name: factory-scada-hist-01, guest_family: windows, guest_id: windows2019srv_64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 300, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:05:05"}], app: scada-historian, depends_on: []}
+    expect:
+      placed: [hq-gpu-train-01, hq-jupyter-01, factory-scada-hist-01]
+      unplaced: [vision-qc]
+      blocked: [hq-gpu-train-02]
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s06
+    description: Anti-affinity for domain controllers, a three-node SQL availability group, web servers in different apps, and two factory gateways on a two-node cluster.
+    # hq 3 nodes: dc ceil(2/3)=1, sql-ag ceil(3/3)=1, web ceil(2/3)=1 per node. factory 2 nodes: ceil(2/2)=1.
+    # Memory hq 16 + 192 + 8 + 16 = 232 <= 576 - 192 = 384; worst node 64 + 8 + 4 + 16 = 92 <= 192.
+    # factory 32 <= 256 - 128 = 128. Windows Tue 2, 9, 16, 23 Feb, budget 270 min.
+    start: "2027-02-01T00:00:00+01:00"
+    until: "2027-03-01T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [tue], start: "18:00", hours: 6}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 10}
+    campaigns: []
+    blackouts: []
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 10000, nodes: [{name: n1, cores: 32, memory_gib: 192, devices: []}, {name: n2, cores: 32, memory_gib: 192, devices: []}, {name: n3, cores: 32, memory_gib: 192, devices: []}]}
+      - {name: pve-factory, site: factory, storage_gib: 4000, nodes: [{name: f1, cores: 16, memory_gib: 128, devices: []}, {name: f2, cores: 16, memory_gib: 128, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - {name: hq-dc-01, guest_family: windows, guest_id: windows2022srvNext_64Guest, cpus: 2, memory_gib: 8, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 80, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-mgmt-10, mac: "00:50:56:10:06:01"}], app: ad-hq, anti_affinity: dc, depends_on: []}
+      - {name: hq-dc-02, guest_family: windows, guest_id: windows2022srvNext_64Guest, cpus: 2, memory_gib: 8, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 80, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-mgmt-10, mac: "00:50:56:10:06:02"}], app: ad-hq, anti_affinity: dc, depends_on: []}
+      - {name: hq-sql-ag-01, guest_family: windows, guest_id: windows2022srvNext_64Guest, cpus: 8, memory_gib: 64, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 500, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:06:03"}], app: sql-ag, anti_affinity: sql-ag, depends_on: [ad-hq]}
+      - {name: hq-sql-ag-02, guest_family: windows, guest_id: windows2022srvNext_64Guest, cpus: 8, memory_gib: 64, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 500, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:06:04"}], app: sql-ag, anti_affinity: sql-ag, depends_on: [ad-hq]}
+      - {name: hq-sql-ag-03, guest_family: windows, guest_id: windows2022srvNext_64Guest, cpus: 8, memory_gib: 64, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 500, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:06:05"}], app: sql-ag, anti_affinity: sql-ag, depends_on: [ad-hq]}
+      - {name: hq-web-01, guest_family: linux, guest_id: rhel9_64Guest, cpus: 2, memory_gib: 4, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 40, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-dmz-200, mac: "00:50:56:10:06:06"}], app: web-a, anti_affinity: web, depends_on: []}
+      - {name: hq-web-02, guest_family: linux, guest_id: rhel9_64Guest, cpus: 2, memory_gib: 4, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 40, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-dmz-200, mac: "00:50:56:10:06:07"}], app: web-b, anti_affinity: web, depends_on: []}
+      - {name: hq-file-02, guest_family: windows, guest_id: windows2019srv_64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 100, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:06:08"}], app: file, depends_on: []}
+      - {name: factory-plc-gw-01, guest_family: linux, guest_id: debian12_64Guest, cpus: 2, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 80, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:06:11"}], app: plc-gw, anti_affinity: plc-gw, depends_on: []}
+      - {name: factory-plc-gw-02, guest_family: linux, guest_id: debian12_64Guest, cpus: 2, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 80, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:06:12"}], app: plc-gw, anti_affinity: plc-gw, depends_on: []}
+    expect:
+      placed: [hq-dc-01, hq-dc-02, hq-sql-ag-01, hq-sql-ag-02, hq-sql-ag-03, hq-web-01, hq-web-02, hq-file-02, factory-plc-gw-01, factory-plc-gw-02]
+      order: [[ad-hq, sql-ag]]
+      not_same_node:
+        - [hq-dc-01, hq-dc-02]
+        - [hq-sql-ag-01, hq-sql-ag-02]
+        - [hq-sql-ag-01, hq-sql-ag-03]
+        - [hq-sql-ag-02, hq-sql-ag-03]
+        - [hq-web-01, hq-web-02]
+        - [factory-plc-gw-01, factory-plc-gw-02]
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s07
+    description: A four-step dependency chain alternating hq and factory while a factory-only ramp-up campaign freezes the factory's first two and a half weeks.
+    # Windows Tue/Thu 18:00-24:00: 2, 4, 9, 11, 16, 18, 23, 25 Feb; budget 270 min.
+    # Campaign line-3-ramp (factory): 2027-02-01T06:00 .. 2027-02-18T06:00 -> factory usable 18, 23, 25 Feb.
+    # mes VMs 2500 GiB = 152.22 min each; two = 304.4 > 270 -> mes spreads over 18 and 23 Feb.
+    # 23 Feb then also holds oee (60 GiB, 13.41) and line-hmi (40 GiB, 12.28): 152.22 + 13.41 + 12.28 = 177.91 <= 270.
+    start: "2027-02-01T00:00:00+01:00"
+    until: "2027-03-01T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [tue, thu], start: "18:00", hours: 6}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 10}
+    campaigns: [{name: line-3-ramp, t0: "2027-02-08T06:00:00+01:00", sites: [factory], before_days: 7, after_days: 10}]
+    blackouts: []
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 10000, nodes: [{name: n1, cores: 32, memory_gib: 256, devices: []}, {name: n2, cores: 32, memory_gib: 256, devices: []}, {name: n3, cores: 32, memory_gib: 256, devices: []}]}
+      - {name: pve-factory, site: factory, storage_gib: 10000, nodes: [{name: f1, cores: 32, memory_gib: 128, devices: []}, {name: f2, cores: 32, memory_gib: 128, devices: []}, {name: f3, cores: 32, memory_gib: 128, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - {name: hq-erp-db-02, guest_family: linux, guest_id: rhel9_64Guest, cpus: 8, memory_gib: 64, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 400, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:07:01"}], app: erp-db, depends_on: []}
+      - {name: factory-mes-app-01, guest_family: linux, guest_id: rhel8_64Guest, cpus: 8, memory_gib: 32, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 100, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}, {label: "Hard disk 2", size_gib: 2400, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:07:02"}], app: mes, depends_on: [erp-db]}
+      - {name: factory-mes-app-02, guest_family: linux, guest_id: rhel8_64Guest, cpus: 8, memory_gib: 32, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 100, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}, {label: "Hard disk 2", size_gib: 2400, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:07:03"}], app: mes, depends_on: [erp-db]}
+      - {name: hq-oee-dash-01, guest_family: linux, guest_id: ubuntu64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 60, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:07:04"}], app: oee-dashboard, depends_on: [mes]}
+      - {name: factory-line-hmi-01, guest_family: windows, guest_id: windows9_64Guest, cpus: 2, memory_gib: 8, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 40, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:07:05"}], app: line-hmi, depends_on: [oee-dashboard]}
+      - {name: hq-wiki-01, guest_family: linux, guest_id: debian12_64Guest, cpus: 2, memory_gib: 4, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 40, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:07:06"}], app: wiki, depends_on: []}
+    expect:
+      placed: [hq-erp-db-02, factory-mes-app-01, factory-mes-app-02, hq-oee-dash-01, factory-line-hmi-01, hq-wiki-01]
+      order: [[erp-db, mes], [mes, oee-dashboard], [oee-dashboard, line-hmi]]
+      no_wave_between:
+        - ["2027-02-01T06:00:00+01:00", "2027-02-18T06:00:00+01:00", factory]
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s08
+    description: A nine-desktop VDI pool with at most four VMs per wave and a blackout for all sites leaving two windows cannot finish.
+    # Windows Sat 9, 16, 23 Jan 09:00-17:00. Blackout year-end-close (no sites = all) 15 Jan 12:00 .. 17 Jan 00:00
+    # removes 16 Jan. Usable: 9 and 23 Jan. 2 windows x 4 VMs = 8 < 9 -> vdi-pool unplaced.
+    # Time is not the limit: 4 x 60 GiB = 4 x 13.41 = 53.65 <= 360.
+    start: "2027-01-04T00:00:00+01:00"
+    until: "2027-01-25T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [sat], start: "09:00", hours: 8}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 4}
+    campaigns: []
+    blackouts: [{name: year-end-close, start: "2027-01-15T12:00:00+01:00", end: "2027-01-17T00:00:00+01:00"}]
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 10000, nodes: [{name: n1, cores: 32, memory_gib: 256, devices: []}, {name: n2, cores: 32, memory_gib: 256, devices: []}, {name: n3, cores: 32, memory_gib: 256, devices: []}]}
+      - {name: pve-factory, site: factory, storage_gib: 4000, nodes: [{name: f1, cores: 16, memory_gib: 128, devices: []}, {name: f2, cores: 16, memory_gib: 128, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - {name: hq-vdi-01, guest_family: windows, guest_id: windows11_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 60, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:08:01"}], app: vdi-pool, depends_on: []}
+      - {name: hq-vdi-02, guest_family: windows, guest_id: windows11_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 60, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:08:02"}], app: vdi-pool, depends_on: []}
+      - {name: hq-vdi-03, guest_family: windows, guest_id: windows11_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 60, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:08:03"}], app: vdi-pool, depends_on: []}
+      - {name: hq-vdi-04, guest_family: windows, guest_id: windows11_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 60, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:08:04"}], app: vdi-pool, depends_on: []}
+      - {name: hq-vdi-05, guest_family: windows, guest_id: windows11_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 60, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:08:05"}], app: vdi-pool, depends_on: []}
+      - {name: hq-vdi-06, guest_family: windows, guest_id: windows11_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 60, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:08:06"}], app: vdi-pool, depends_on: []}
+      - {name: hq-vdi-07, guest_family: windows, guest_id: windows11_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 60, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:08:07"}], app: vdi-pool, depends_on: []}
+      - {name: hq-vdi-08, guest_family: windows, guest_id: windows11_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 60, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:08:08"}], app: vdi-pool, depends_on: []}
+      - {name: hq-vdi-09, guest_family: windows, guest_id: windows11_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: true, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 60, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:08:09"}], app: vdi-pool, depends_on: []}
+      - {name: factory-qa-ws-01, guest_family: windows, guest_id: windows9_64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 80, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:08:11"}], app: qa-ws, depends_on: []}
+    expect:
+      unplaced: [vdi-pool]
+      no_wave_between:
+        - ["2027-01-15T12:00:00+01:00", "2027-01-17T00:00:00+01:00", hq]
+        - ["2027-01-15T12:00:00+01:00", "2027-01-17T00:00:00+01:00", factory]
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s09
+    description: CPU overcommit stops an HPC group at hq, and three-way anti-affinity with one small factory node stops a Kafka group that memory alone would allow.
+    # hq: 2 nodes x 16 cores x overcommit 2 = 32 vCPUs per node. hpc 24 vCPUs each -> one per node -> 2 of 3.
+    # Memory is no limit (96 <= 512 - 256). license 8 vCPUs fits next to one hpc VM: 24 + 8 = 32 <= 32.
+    # factory: 256 + 256 + 32 -> 544 - 256 = 288 >= 3 x 64 = 192, and f1 alone holds three 64 GiB VMs,
+    # but anti-affinity allows ceil(3/3) = 1 per node and f3 (32 GiB) cannot hold a 64 GiB VM -> kafka unplaced.
+    # mqtt 16 GiB: with two kafka VMs left placed, 128 + 16 = 144 <= 288 and every node has room -> placed.
+    start: "2027-02-01T00:00:00+01:00"
+    until: "2027-03-01T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [tue], start: "18:00", hours: 6}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 10}
+    campaigns: []
+    blackouts: []
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 10000, nodes: [{name: n1, cores: 16, memory_gib: 256, devices: []}, {name: n2, cores: 16, memory_gib: 256, devices: []}]}
+      - {name: pve-factory, site: factory, storage_gib: 10000, nodes: [{name: f1, cores: 32, memory_gib: 256, devices: []}, {name: f2, cores: 32, memory_gib: 256, devices: []}, {name: f3, cores: 32, memory_gib: 32, devices: []}]}
+    cpu_overcommit: 2
+    vms:
+      - {name: hq-hpc-solver-01, guest_family: linux, guest_id: rhel9_64Guest, cpus: 24, memory_gib: 32, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-lab-400, mac: "00:50:56:10:09:01"}], app: hpc-solver, depends_on: []}
+      - {name: hq-hpc-solver-02, guest_family: linux, guest_id: rhel9_64Guest, cpus: 24, memory_gib: 32, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-lab-400, mac: "00:50:56:10:09:02"}], app: hpc-solver, depends_on: []}
+      - {name: hq-hpc-solver-03, guest_family: linux, guest_id: rhel9_64Guest, cpus: 24, memory_gib: 32, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 200, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-lab-400, mac: "00:50:56:10:09:03"}], app: hpc-solver, depends_on: []}
+      - {name: hq-license-01, guest_family: windows, guest_id: windows2019srv_64Guest, cpus: 8, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 40, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:09:04"}], app: license-srv, depends_on: []}
+      - {name: factory-kafka-01, guest_family: linux, guest_id: rhel9_64Guest, cpus: 4, memory_gib: 64, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 300, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:09:11"}], app: kafka, anti_affinity: kafka, depends_on: []}
+      - {name: factory-kafka-02, guest_family: linux, guest_id: rhel9_64Guest, cpus: 4, memory_gib: 64, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 300, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:09:12"}], app: kafka, anti_affinity: kafka, depends_on: []}
+      - {name: factory-kafka-03, guest_family: linux, guest_id: rhel9_64Guest, cpus: 4, memory_gib: 64, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 300, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:09:13"}], app: kafka, anti_affinity: kafka, depends_on: []}
+      - {name: factory-mqtt-01, guest_family: linux, guest_id: debian12_64Guest, cpus: 2, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 40, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:09:14"}], app: mqtt, depends_on: []}
+    expect:
+      unplaced: [hpc-solver, kafka]
+      placed: [hq-license-01, factory-mqtt-01]
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s10
+    description: Cluster storage cannot hold an archive group, while reporting moves because its dependencies are one blocked group and one that does not exist.
+    # storage 6000 GiB; archive 2 x 3500 = 7000 > 6000 -> unplaced. Even with one archive VM left placed,
+    # 3500 + reporting 2 x 300 + print 100 = 4200 <= 6000. legacy-oracle has an RDM disk -> blocked;
+    # fax-gateway is absent; both dependencies are ignored. Windows Tue 2, 9, 16, 23 Feb, budget 270 min;
+    # archive VM 3500 GiB = 209.11 min fits one per window.
+    start: "2027-02-01T00:00:00+01:00"
+    until: "2027-03-01T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [tue], start: "18:00", hours: 6}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 10}
+    campaigns: []
+    blackouts: []
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 6000, nodes: [{name: n1, cores: 32, memory_gib: 256, devices: []}, {name: n2, cores: 32, memory_gib: 256, devices: []}, {name: n3, cores: 32, memory_gib: 256, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - {name: hq-archive-01, guest_family: linux, guest_id: rhel9_64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 500, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}, {label: "Hard disk 2", size_gib: 3000, datastore: hq-nfs-01, datastore_type: nfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:10:01"}], app: archive, depends_on: []}
+      - {name: hq-archive-02, guest_family: linux, guest_id: rhel9_64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 500, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}, {label: "Hard disk 2", size_gib: 3000, datastore: hq-nfs-01, datastore_type: nfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:10:02"}], app: archive, depends_on: []}
+      - {name: hq-legacy-ora-01, guest_family: linux, guest_id: oracleLinux7_64Guest, cpus: 8, memory_gib: 64, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 100, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}, {label: "Hard disk 2", size_gib: 1000, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: rdm, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:10:03"}], app: legacy-oracle, depends_on: []}
+      - {name: hq-reporting-01, guest_family: windows, guest_id: windows2019srv_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 300, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:10:04"}], app: reporting, depends_on: [legacy-oracle, fax-gateway]}
+      - {name: hq-reporting-02, guest_family: windows, guest_id: windows2019srv_64Guest, cpus: 4, memory_gib: 16, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 300, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:10:05"}], app: reporting, depends_on: [legacy-oracle, fax-gateway]}
+      - {name: hq-print-01, guest_family: windows, guest_id: windows2019srv_64Guest, cpus: 2, memory_gib: 8, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 100, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:10:06"}], app: print, depends_on: []}
+    expect:
+      unplaced: [archive]
+      placed: [hq-reporting-01, hq-reporting-02, hq-print-01]
+      blocked: [hq-legacy-ora-01]
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s11
+    description: Overnight windows across midnight, a factory-only plant shutdown that touches every factory window, and a one-day hq campaign that clips one overnight window.
+    # Windows Sat 22:00 + 8 h: 6/7, 13/14, 20/21, 27/28 Feb (last ends 28 Feb 06:00, before until). Budget 360 min.
+    # Blackout plant-shutdown (factory): 1 Feb 00:00 .. 28 Feb 01:00 overlaps all four windows (the last one
+    # from 22:00 to 01:00) -> factory has no usable window -> line-scada unplaced.
+    # Campaign launch-k7 (hq): 13 Feb 03:00 .. 14 Feb 03:00 overlaps the 13/14 window -> hq usable 6, 20, 27 Feb.
+    # crm VMs 4000 GiB = 237.56 min each; two = 475.1 > 360 -> 6 Feb and 20 Feb. portal (50 GiB, 12.84)
+    # follows: 20 Feb (237.56 + 12.84 = 250.40 <= 360) or 27 Feb; placed either way.
+    start: "2027-02-01T00:00:00+01:00"
+    until: "2027-03-01T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [sat], start: "22:00", hours: 8}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 10}
+    campaigns: [{name: launch-k7, t0: "2027-02-14T03:00:00+01:00", sites: [hq], before_days: 1, after_days: 0}]
+    blackouts: [{name: plant-shutdown, start: "2027-02-01T00:00:00+01:00", end: "2027-02-28T01:00:00+01:00", sites: [factory]}]
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 20000, nodes: [{name: n1, cores: 32, memory_gib: 256, devices: []}, {name: n2, cores: 32, memory_gib: 256, devices: []}, {name: n3, cores: 32, memory_gib: 256, devices: []}]}
+      - {name: pve-factory, site: factory, storage_gib: 4000, nodes: [{name: f1, cores: 16, memory_gib: 128, devices: []}, {name: f2, cores: 16, memory_gib: 128, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - {name: hq-crm-01, guest_family: linux, guest_id: rhel9_64Guest, cpus: 8, memory_gib: 64, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 4000, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:11:01"}], app: crm, depends_on: []}
+      - {name: hq-crm-02, guest_family: linux, guest_id: rhel9_64Guest, cpus: 8, memory_gib: 64, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 4000, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:11:02"}], app: crm, depends_on: []}
+      - {name: hq-crm-portal-01, guest_family: linux, guest_id: ubuntu64Guest, cpus: 4, memory_gib: 8, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 50, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-dmz-200, mac: "00:50:56:10:11:03"}], app: crm-portal, depends_on: [crm]}
+      - {name: factory-scada-01, guest_family: windows, guest_id: windows2016srv_64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 120, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:11:11"}], app: line-scada, depends_on: []}
+      - {name: launch-ops-01, guest_family: linux, guest_id: rhel8_64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: launch, disks: [{label: "Hard disk 1", size_gib: 100, datastore: launch-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:11:21"}], app: launch-ops, depends_on: []}
+    expect:
+      placed: [hq-crm-01, hq-crm-02, hq-crm-portal-01]
+      unplaced: [line-scada]
+      blocked: [launch-ops-01]
+      order: [[crm, crm-portal]]
+      no_wave_between:
+        - ["2027-02-13T03:00:00+01:00", "2027-02-14T03:00:00+01:00", hq]
+        - ["2027-02-01T00:00:00+01:00", "2027-02-28T01:00:00+01:00", factory]
+
+  # ---------------------------------------------------------------------------------------------
+  - id: s12
+    description: Attention-level VMs (vTPM, snapshots, independent disk, no disks) move, blocked ones stay, and a campaign without sites freezes every site.
+    # Campaign company-offsite (no sites = all): 15 Feb 12:00 .. 19 Feb 12:00 removes Tue 16 and Thu 18 Feb.
+    # Blocked: hq-mssql-02 (vSAN), factory-opc-02 (pg-ot-311 unmapped), launch-tm-01 (no cluster at launch).
+    # crm-app depends on sql-core (blocked, ignored) and ad. Everything else is small and fits 2 Feb.
+    start: "2027-02-01T00:00:00+01:00"
+    until: "2027-03-01T00:00:00+01:00"
+    timezone: Europe/Berlin
+    maintenance_windows: [{days: [tue, thu], start: "18:00", hours: 6}]
+    migration: {copy_mib_per_s: 300, per_vm_overhead_min: 10, rollback_reserve_share: 0.25, max_vms_per_wave: 10}
+    campaigns: [{name: company-offsite, t0: "2027-02-17T12:00:00+01:00", before_days: 2, after_days: 2}]
+    blackouts: []
+    clusters:
+      - {name: pve-hq, site: hq, storage_gib: 10000, nodes: [{name: n1, cores: 32, memory_gib: 256, devices: []}, {name: n2, cores: 32, memory_gib: 256, devices: []}, {name: n3, cores: 32, memory_gib: 256, devices: []}]}
+      - {name: pve-factory, site: factory, storage_gib: 4000, nodes: [{name: f1, cores: 16, memory_gib: 128, devices: []}, {name: f2, cores: 16, memory_gib: 128, devices: []}]}
+    cpu_overcommit: 4
+    vms:
+      - {name: hq-dc-03, guest_family: windows, guest_id: windows2022srvNext_64Guest, cpus: 2, memory_gib: 8, firmware: efi, vtpm: true, snapshots: 2, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 80, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-mgmt-10, mac: "00:50:56:10:12:01"}], app: ad, depends_on: []}
+      - {name: hq-mssql-02, guest_family: windows, guest_id: windows2019srv_64Guest, cpus: 8, memory_gib: 64, firmware: efi, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 100, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}, {label: "Hard disk 2", size_gib: 500, datastore: vsanDatastore, datastore_type: vsan, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-db-120, mac: "00:50:56:10:12:02"}], app: sql-core, depends_on: [ad]}
+      - {name: hq-crm-app-01, guest_family: linux, guest_id: rhel9_64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: hq, disks: [{label: "Hard disk 1", size_gib: 100, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:12:03"}], app: crm-app, depends_on: [sql-core, ad]}
+      - {name: hq-pxe-01, guest_family: other, guest_id: otherGuest64, cpus: 1, memory_gib: 2, firmware: bios, vtpm: false, snapshots: 0, tools_installed: false, passthrough: [], site: hq, disks: [], nics: [{portgroup: pg-servers-110, mac: "00:50:56:10:12:04"}], app: pxe, depends_on: []}
+      - {name: factory-historian-02, guest_family: windows, guest_id: windows2016srv_64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 100, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}, {label: "Hard disk 2", size_gib: 400, datastore: fac-ds-1, datastore_type: vmfs, mode: independent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:12:11"}], app: historian, depends_on: []}
+      - {name: factory-opc-02, guest_family: linux, guest_id: ubuntu64Guest, cpus: 2, memory_gib: 4, firmware: bios, vtpm: false, snapshots: 0, tools_installed: false, passthrough: [], site: factory, disks: [{label: "Hard disk 1", size_gib: 32, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-311, mac: "00:50:56:10:12:12"}], app: opc, depends_on: []}
+      - {name: launch-tm-01, guest_family: linux, guest_id: rhel8_64Guest, cpus: 4, memory_gib: 16, firmware: bios, vtpm: false, snapshots: 0, tools_installed: true, passthrough: [], site: launch, disks: [{label: "Hard disk 1", size_gib: 100, datastore: launch-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}], nics: [{portgroup: pg-ot-310, mac: "00:50:56:10:12:21"}], app: telemetry, depends_on: []}
+    expect:
+      placed: [hq-dc-03, hq-crm-app-01, hq-pxe-01, factory-historian-02]
+      blocked: [hq-mssql-02, factory-opc-02, launch-tm-01]
+      order: [[ad, crm-app]]
+      no_wave_between:
+        - ["2027-02-15T12:00:00+01:00", "2027-02-19T12:00:00+01:00", hq]
+        - ["2027-02-15T12:00:00+01:00", "2027-02-19T12:00:00+01:00", factory]

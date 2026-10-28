@@ -1,0 +1,920 @@
+# Written blind from heldout/WRITING_CASES.md on 2026-10-28.
+vms:
+  # --- Domain controllers and directory services ---
+  - id: v001
+    vm:
+      name: hq-dc-01
+      guest_family: windows
+      guest_id: windows2019srv_64Guest
+      cpus: 2
+      memory_gib: 8
+      firmware: efi
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 80, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-mgmt-10, mac: "00:50:56:a1:00:01"}
+    expect:
+      verdict: attention
+      rules: [windows-virtio, efi-firmware, vmware-tools]
+
+  - id: v002
+    vm:
+      name: hq-dc-02
+      guest_family: windows
+      guest_id: windows2022srvNext_64Guest
+      cpus: 2
+      memory_gib: 8
+      firmware: efi
+      vtpm: true
+      snapshots: 1
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 80, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-mgmt-10, mac: "00:50:56:a1:00:02"}
+    expect:
+      verdict: attention
+      rules: [windows-virtio, vtpm, snapshots, efi-firmware, vmware-tools]
+
+  # --- Databases ---
+  - id: v003
+    vm:
+      name: hq-pg-01
+      guest_family: linux
+      guest_id: rhel9_64Guest
+      cpus: 8
+      memory_gib: 64
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 60, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 1200, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: true}
+      nics:
+        - {portgroup: pg-db-120, mac: "00:50:56:a1:01:01"}
+    expect:
+      verdict: blocked
+      rules: [encrypted-disk, linux-nic-rename, vmware-tools]
+
+  - id: v004
+    vm:
+      name: hq-mssql-01
+      guest_family: windows
+      guest_id: windows2019srv_64Guest
+      cpus: 16
+      memory_gib: 128
+      firmware: efi
+      vtpm: false
+      snapshots: 2
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: vsanDatastore, datastore_type: vsan, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 2000, datastore: vsanDatastore, datastore_type: vsan, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-db-120, mac: "00:50:56:a1:01:02"}
+    expect:
+      verdict: blocked
+      rules: [vsan-disk, snapshots, windows-virtio, efi-firmware, vmware-tools]
+
+  - id: v005
+    vm:
+      name: hq-ora-rac-01
+      guest_family: linux
+      guest_id: oracleLinux8_64Guest
+      cpus: 16
+      memory_gib: 192
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 2048, datastore: hq-ds-1, datastore_type: vmfs, mode: independent, backing: rdm, encrypted: false}
+      nics:
+        - {portgroup: pg-db-120, mac: "00:50:56:a1:01:03"}
+    expect:
+      verdict: blocked
+      rules: [rdm-disk, independent-disk, linux-nic-rename, vmware-tools]
+
+  # --- OT telemetry at the factory ---
+  - id: v006
+    vm:
+      name: factory-historian-01
+      guest_family: windows
+      guest_id: windows2016srv_64Guest
+      cpus: 4
+      memory_gib: 16
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: factory
+      disks:
+        - {label: "Hard disk 1", size_gib: 120, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 800, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-ot-310, mac: "00:50:56:b1:00:01"}
+    expect:
+      verdict: attention
+      rules: [windows-virtio, vmware-tools]
+
+  - id: v007
+    vm:
+      name: factory-opcua-gw-01
+      guest_family: linux
+      guest_id: ubuntu64Guest
+      cpus: 2
+      memory_gib: 4
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: false
+      passthrough: []
+      site: factory
+      disks:
+        - {label: "Hard disk 1", size_gib: 32, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-ot-310, mac: "00:50:56:b1:00:02"}
+        - {portgroup: pg-ot-311, mac: "00:50:56:b1:00:03"}
+    expect:
+      verdict: blocked
+      rules: [unmapped-network, linux-nic-rename]
+
+  # --- GPU training and inference ---
+  - id: v008
+    vm:
+      name: hq-gpu-train-01
+      guest_family: linux
+      guest_id: ubuntu64Guest
+      cpus: 32
+      memory_gib: 256
+      firmware: efi
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: [gpu-a100]
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 200, datastore: hq-ds-ml, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 4000, datastore: hq-ds-ml, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-lab-400, mac: "00:50:56:a1:02:01"}
+    expect:
+      verdict: attention
+      rules: [pci-passthrough, efi-firmware, linux-nic-rename, vmware-tools]
+
+  - id: v009
+    vm:
+      name: hq-gpu-train-02
+      guest_family: linux
+      guest_id: ubuntu64Guest
+      cpus: 32
+      memory_gib: 256
+      firmware: efi
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: [gpu-h100]
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 200, datastore: hq-ds-ml, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-lab-400, mac: "00:50:56:a1:02:02"}
+    expect:
+      verdict: blocked
+      rules: [device-not-on-target, pci-passthrough, efi-firmware, linux-nic-rename, vmware-tools]
+
+  - id: v010
+    # gpu-a100 exists on target nodes, so the device rule does not fire; the site has no cluster.
+    vm:
+      name: launch-gpu-infer-01
+      guest_family: linux
+      guest_id: ubuntu64Guest
+      cpus: 16
+      memory_gib: 128
+      firmware: efi
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: [gpu-a100]
+      site: launch
+      disks:
+        - {label: "Hard disk 1", size_gib: 200, datastore: launch-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-servers-110, mac: "00:50:56:c1:00:01"}
+    expect:
+      verdict: blocked
+      rules: [no-target-cluster, pci-passthrough, efi-firmware, linux-nic-rename, vmware-tools]
+
+  - id: v011
+    vm:
+      name: launch-telemetry-01
+      guest_family: linux
+      guest_id: rhel8_64Guest
+      cpus: 4
+      memory_gib: 16
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: launch
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: launch-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-ot-310, mac: "00:50:56:c1:00:02"}
+    expect:
+      verdict: blocked
+      rules: [no-target-cluster, linux-nic-rename, vmware-tools]
+
+  # --- Desktops (VDI and engineering workstations) ---
+  - id: v012
+    vm:
+      name: hq-vdi-win11-01
+      guest_family: windows
+      guest_id: windows11_64Guest
+      cpus: 4
+      memory_gib: 16
+      firmware: efi
+      vtpm: true
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 128, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-servers-110, mac: "00:50:56:a1:03:01"}
+    expect:
+      verdict: attention
+      rules: [windows-virtio, vtpm, efi-firmware, vmware-tools]
+
+  - id: v013
+    vm:
+      name: hq-vdi-win11-02
+      guest_family: windows
+      guest_id: windows11_64Guest
+      cpus: 4
+      memory_gib: 16
+      firmware: efi
+      vtpm: true
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 128, datastore: hq-ds-vdi, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-vdi-150, mac: "00:50:56:a1:03:02"}
+    expect:
+      verdict: blocked
+      rules: [unmapped-network, windows-virtio, vtpm, efi-firmware, vmware-tools]
+
+  # --- Storage oddities ---
+  - id: v014
+    vm:
+      name: hq-backup-proxy-01
+      guest_family: linux
+      guest_id: debian11_64Guest
+      cpus: 4
+      memory_gib: 16
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 40, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 6000, datastore: "hq-ds-archive+cold", datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-servers-110, mac: "00:50:56:a1:04:01"}
+    expect:
+      verdict: blocked
+      rules: [datastore-plus, linux-nic-rename, vmware-tools]
+
+  - id: v015
+    # A firewall appliance: guest family other, BIOS, no VMware Tools, two mapped NICs.
+    vm:
+      name: hq-fw-edge-01
+      guest_family: other
+      guest_id: freebsd13_64Guest
+      cpus: 4
+      memory_gib: 8
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: false
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 16, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-dmz-200, mac: "00:50:56:a1:05:01"}
+        - {portgroup: pg-servers-110, mac: "00:50:56:a1:05:02"}
+    expect:
+      verdict: auto
+      rules: []
+
+  # --- Diskless VMs ---
+  - id: v016
+    vm:
+      name: hq-pxe-stub-01
+      guest_family: other
+      guest_id: otherGuest64
+      cpus: 1
+      memory_gib: 2
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: false
+      passthrough: []
+      site: hq
+      disks: []
+      nics:
+        - {portgroup: pg-servers-110, mac: "00:50:56:a1:06:01"}
+    expect:
+      verdict: attention
+      rules: [no-disks]
+
+  - id: v017
+    vm:
+      name: hq-ipxe-lab-02
+      guest_family: linux
+      guest_id: other5xLinux64Guest
+      cpus: 2
+      memory_gib: 4
+      firmware: efi
+      vtpm: false
+      snapshots: 0
+      tools_installed: false
+      passthrough: []
+      site: hq
+      disks: []
+      nics:
+        - {portgroup: pg-lab-400, mac: "00:50:56:a1:06:02"}
+    expect:
+      verdict: attention
+      rules: [no-disks, efi-firmware, linux-nic-rename]
+
+  # --- VMs without NICs ---
+  - id: v018
+    vm:
+      name: hq-malware-sandbox-01
+      guest_family: linux
+      guest_id: ubuntu64Guest
+      cpus: 2
+      memory_gib: 8
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 60, datastore: hq-ds-lab, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics: []
+    expect:
+      verdict: auto
+      rules: [linux-nic-rename, vmware-tools]
+
+  - id: v019
+    vm:
+      name: factory-airgap-scada-01
+      guest_family: windows
+      guest_id: windows9_64Guest
+      cpus: 4
+      memory_gib: 8
+      firmware: bios
+      vtpm: false
+      snapshots: 3
+      tools_installed: false
+      passthrough: []
+      site: factory
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics: []
+    expect:
+      verdict: attention
+      rules: [windows-virtio, snapshots]
+
+  # --- Plain Linux servers ---
+  - id: v020
+    vm:
+      name: hq-web-01
+      guest_family: linux
+      guest_id: rhel9_64Guest
+      cpus: 2
+      memory_gib: 4
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 40, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-dmz-200, mac: "00:50:56:a1:07:01"}
+    expect:
+      verdict: auto
+      rules: [linux-nic-rename, vmware-tools]
+
+  - id: v021
+    vm:
+      name: hq-web-02
+      guest_family: linux
+      guest_id: rhel9_64Guest
+      cpus: 2
+      memory_gib: 4
+      firmware: efi
+      vtpm: false
+      snapshots: 0
+      tools_installed: false
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 40, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-dmz-200, mac: "00:50:56:a1:07:02"}
+    expect:
+      verdict: auto
+      rules: [efi-firmware, linux-nic-rename]
+
+  - id: v022
+    vm:
+      name: hq-sql-reporting-01
+      guest_family: windows
+      guest_id: windows2022srvNext_64Guest
+      cpus: 8
+      memory_gib: 64
+      firmware: efi
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 200, datastore: hq-ds-db, datastore_type: vmfs, mode: independent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-db-120, mac: "00:50:56:a1:01:04"}
+    expect:
+      verdict: attention
+      rules: [independent-disk, windows-virtio, efi-firmware, vmware-tools]
+
+  - id: v023
+    # One disk that is both on vSAN and on a datastore whose name contains '+'.
+    vm:
+      name: hq-ldap-01
+      guest_family: linux
+      guest_id: sles15_64Guest
+      cpus: 2
+      memory_gib: 8
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 50, datastore: "vsanDatastore+hq", datastore_type: vsan, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-mgmt-10, mac: "00:50:56:a1:08:01"}
+    expect:
+      verdict: blocked
+      rules: [vsan-disk, datastore-plus, linux-nic-rename, vmware-tools]
+
+  - id: v024
+    vm:
+      name: factory-mes-db-01
+      guest_family: linux
+      guest_id: rhel8_64Guest
+      cpus: 8
+      memory_gib: 64
+      firmware: efi
+      vtpm: true
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: factory
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: fac-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: true}
+        - {label: "Hard disk 2", size_gib: 900, datastore: fac-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-db-120, mac: "00:50:56:b1:01:01"}
+    expect:
+      verdict: blocked
+      rules: [encrypted-disk, vtpm, efi-firmware, linux-nic-rename, vmware-tools]
+
+  - id: v025
+    # Engineering workstation with a USB licence dongle passed through.
+    vm:
+      name: factory-plc-eng-ws-01
+      guest_family: windows
+      guest_id: windows9_64Guest
+      cpus: 4
+      memory_gib: 16
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: [usb-license-dongle]
+      site: factory
+      disks:
+        - {label: "Hard disk 1", size_gib: 256, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-ot-310, mac: "00:50:56:b1:02:01"}
+    expect:
+      verdict: blocked
+      rules: [device-not-on-target, pci-passthrough, windows-virtio, vmware-tools]
+
+  - id: v026
+    # One passed-through class exists on the target (gpu-a100), the other does not.
+    vm:
+      name: hq-gpu-dev-03
+      guest_family: linux
+      guest_id: ubuntu64Guest
+      cpus: 16
+      memory_gib: 128
+      firmware: efi
+      vtpm: false
+      snapshots: 1
+      tools_installed: true
+      passthrough: [gpu-a100, nvme-p5800x]
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 200, datastore: hq-ds-ml, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-lab-400, mac: "00:50:56:a1:02:03"}
+    expect:
+      verdict: blocked
+      rules: [device-not-on-target, pci-passthrough, snapshots, efi-firmware, linux-nic-rename, vmware-tools]
+
+  - id: v027
+    vm:
+      name: colo-fra-rds-01
+      guest_family: windows
+      guest_id: windows2019srv_64Guest
+      cpus: 8
+      memory_gib: 32
+      firmware: efi
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: colo-fra
+      disks:
+        - {label: "Hard disk 1", size_gib: 120, datastore: colo-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-servers-110, mac: "00:50:56:d1:00:01"}
+    expect:
+      verdict: blocked
+      rules: [no-target-cluster, windows-virtio, efi-firmware, vmware-tools]
+
+  - id: v028
+    vm:
+      name: hq-k8s-worker-01
+      guest_family: linux
+      guest_id: ubuntu64Guest
+      cpus: 16
+      memory_gib: 64
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 500, datastore: hq-nfs-01, datastore_type: nfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 3", size_gib: 500, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-servers-110, mac: "00:50:56:a1:09:01"}
+        - {portgroup: pg-db-120, mac: "00:50:56:a1:09:02"}
+    expect:
+      verdict: auto
+      rules: [linux-nic-rename, vmware-tools]
+
+  - id: v029
+    vm:
+      name: hq-build-runner-01
+      guest_family: linux
+      guest_id: debian12_64Guest
+      cpus: 8
+      memory_gib: 16
+      firmware: bios
+      vtpm: false
+      snapshots: 5
+      tools_installed: false
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 200, datastore: hq-nfs-01, datastore_type: nfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-lab-400, mac: "00:50:56:a1:0a:01"}
+    expect:
+      verdict: attention
+      rules: [snapshots, linux-nic-rename]
+
+  - id: v030
+    # Three disks; only the third is on vSAN.
+    vm:
+      name: factory-ot-telemetry-02
+      guest_family: linux
+      guest_id: rhel9_64Guest
+      cpus: 4
+      memory_gib: 16
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: factory
+      disks:
+        - {label: "Hard disk 1", size_gib: 50, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 500, datastore: fac-nfs-01, datastore_type: nfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 3", size_gib: 500, datastore: fac-vsan-01, datastore_type: vsan, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-ot-310, mac: "00:50:56:b1:03:01"}
+    expect:
+      verdict: blocked
+      rules: [vsan-disk, linux-nic-rename, vmware-tools]
+
+  - id: v031
+    vm:
+      name: hq-file-01
+      guest_family: windows
+      guest_id: windows2019srv_64Guest
+      cpus: 4
+      memory_gib: 16
+      firmware: bios
+      vtpm: false
+      snapshots: 1
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 80, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 3000, datastore: "hq+fileshare", datastore_type: nfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-servers-110, mac: "00:50:56:a1:0b:01"}
+    expect:
+      verdict: blocked
+      rules: [datastore-plus, snapshots, windows-virtio, vmware-tools]
+
+  - id: v032
+    # Second NIC's port group only shares a prefix with a mapped one.
+    vm:
+      name: hq-jump-01
+      guest_family: linux
+      guest_id: rhel9_64Guest
+      cpus: 2
+      memory_gib: 4
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 40, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-mgmt-10, mac: "00:50:56:a1:0c:01"}
+        - {portgroup: pg-mgmt-10-old, mac: "00:50:56:a1:0c:02"}
+    expect:
+      verdict: blocked
+      rules: [unmapped-network, linux-nic-rename, vmware-tools]
+
+  - id: v033
+    vm:
+      name: hq-netmon-01
+      guest_family: other
+      guest_id: otherGuest64
+      cpus: 4
+      memory_gib: 8
+      firmware: efi
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-2, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-mgmt-10, mac: "00:50:56:a1:0d:01"}
+    expect:
+      verdict: auto
+      rules: [efi-firmware, vmware-tools]
+
+  - id: v034
+    # Every attention rule a Windows HMI can collect, nothing blocking.
+    vm:
+      name: factory-hmi-01
+      guest_family: windows
+      guest_id: windows2022srvNext_64Guest
+      cpus: 4
+      memory_gib: 16
+      firmware: efi
+      vtpm: true
+      snapshots: 2
+      tools_installed: false
+      passthrough: []
+      site: factory
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 50, datastore: fac-ds-1, datastore_type: vmfs, mode: independent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-ot-310, mac: "00:50:56:b1:04:01"}
+    expect:
+      verdict: attention
+      rules: [independent-disk, snapshots, windows-virtio, vtpm, efi-firmware]
+
+  - id: v035
+    vm:
+      name: hq-gpu-infer-04
+      guest_family: linux
+      guest_id: ubuntu64Guest
+      cpus: 16
+      memory_gib: 96
+      firmware: efi
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: [gpu-a100]
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-ml, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 800, datastore: hq-ds-ml, datastore_type: vmfs, mode: independent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-lab-400, mac: "00:50:56:a1:02:04"}
+    expect:
+      verdict: attention
+      rules: [pci-passthrough, independent-disk, efi-firmware, linux-nic-rename, vmware-tools]
+
+  - id: v036
+    vm:
+      name: launch-ground-station-01
+      guest_family: windows
+      guest_id: windows2019srv_64Guest
+      cpus: 8
+      memory_gib: 32
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: launch
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: launch-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 1000, datastore: launch-ds-1, datastore_type: vmfs, mode: persistent, backing: rdm, encrypted: false}
+      nics:
+        - {portgroup: pg-ot-310, mac: "00:50:56:c1:00:03"}
+    expect:
+      verdict: blocked
+      rules: [no-target-cluster, rdm-disk, windows-virtio, vmware-tools]
+
+  - id: v037
+    # Only one rule, and it blocks.
+    vm:
+      name: hq-legacy-billing-01
+      guest_family: other
+      guest_id: solaris10_64Guest
+      cpus: 2
+      memory_gib: 8
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: false
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 60, datastore: hq-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: true}
+      nics:
+        - {portgroup: pg-servers-110, mac: "00:50:56:a1:0e:01"}
+    expect:
+      verdict: blocked
+      rules: [encrypted-disk]
+
+  - id: v038
+    vm:
+      name: hq-kafka-01
+      guest_family: linux
+      guest_id: rhel9_64Guest
+      cpus: 8
+      memory_gib: 32
+      firmware: bios
+      vtpm: false
+      snapshots: 1
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 50, datastore: vsanDatastore, datastore_type: vsan, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 1000, datastore: vsanDatastore, datastore_type: vsan, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-servers-110, mac: "00:50:56:a1:0f:01"}
+        - {portgroup: pg-kafka-130, mac: "00:50:56:a1:0f:02"}
+    expect:
+      verdict: blocked
+      rules: [vsan-disk, unmapped-network, snapshots, linux-nic-rename, vmware-tools]
+
+  - id: v039
+    vm:
+      name: factory-edge-buffer-01
+      guest_family: linux
+      guest_id: other5xLinux64Guest
+      cpus: 2
+      memory_gib: 4
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: false
+      passthrough: []
+      site: factory
+      disks: []
+      nics:
+        - {portgroup: pg-ot-999, mac: "00:50:56:b1:05:01"}
+    expect:
+      verdict: blocked
+      rules: [no-disks, unmapped-network, linux-nic-rename]
+
+  - id: v040
+    vm:
+      name: hq-sqlfci-node-01
+      guest_family: windows
+      guest_id: windows2019srv_64Guest
+      cpus: 8
+      memory_gib: 64
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: hq
+      disks:
+        - {label: "Hard disk 1", size_gib: 100, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+        - {label: "Hard disk 2", size_gib: 1, datastore: hq-ds-db, datastore_type: vmfs, mode: persistent, backing: rdm, encrypted: false}
+      nics:
+        - {portgroup: pg-db-120, mac: "00:50:56:a1:01:05"}
+    expect:
+      verdict: blocked
+      rules: [rdm-disk, windows-virtio, vmware-tools]
+
+  - id: v041
+    vm:
+      name: factory-ntp-01
+      guest_family: linux
+      guest_id: debian12_64Guest
+      cpus: 1
+      memory_gib: 2
+      firmware: bios
+      vtpm: false
+      snapshots: 0
+      tools_installed: true
+      passthrough: []
+      site: factory
+      disks:
+        - {label: "Hard disk 1", size_gib: 16, datastore: fac-ds-1, datastore_type: vmfs, mode: persistent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-ot-310, mac: "00:50:56:b1:06:01"}
+    expect:
+      verdict: auto
+      rules: [linux-nic-rename, vmware-tools]
+
+  - id: v042
+    # vTPM plus snapshots on a Linux guest with an independent disk on the factory site.
+    vm:
+      name: factory-label-print-01
+      guest_family: linux
+      guest_id: sles15_64Guest
+      cpus: 2
+      memory_gib: 4
+      firmware: efi
+      vtpm: true
+      snapshots: 1
+      tools_installed: true
+      passthrough: []
+      site: factory
+      disks:
+        - {label: "Hard disk 1", size_gib: 40, datastore: fac-ds-1, datastore_type: vmfs, mode: independent, backing: flat, encrypted: false}
+      nics:
+        - {portgroup: pg-servers-110, mac: "00:50:56:b1:07:01"}
+    expect:
+      verdict: attention
+      rules: [independent-disk, snapshots, vtpm, efi-firmware, linux-nic-rename, vmware-tools]
