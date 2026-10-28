@@ -119,5 +119,5 @@ class TestDrill:
 def test_cli_plan_and_generate(tmp_path: Path) -> None:
     assert main(["plan", "sim", "--start", "2026-11-16", "--out", str(tmp_path / "plan.json")]) == 0
     assert main(["generate", "sim", "--start", "2026-11-16", "--out", str(tmp_path / "gen")]) == 0
-    assert list((tmp_path / "gen" / "terraform").glob("wave-*/main.tf.json"))
+    assert list((tmp_path / "gen" / "terraform").glob("wave-*/main.tf"))
     assert os.path.getsize(tmp_path / "plan.json") > 1000

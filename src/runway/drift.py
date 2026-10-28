@@ -53,8 +53,8 @@ def check(pve: Proxmox, terraform_dir: Path) -> tuple[list[Drift], list[str]]:
     """Compare every generated VM with Proxmox. Returns (drift, VMs in code that are missing)."""
     drift: list[Drift] = []
     missing: list[str] = []
-    for f in sorted(terraform_dir.glob("wave-*/main.tf.json")):
-        for body in json.loads(f.read_text())["resource"]["proxmox_virtual_environment_vm"].values():
+    for f in sorted(terraform_dir.glob("wave-*/vms.json")):
+        for body in json.loads(f.read_text()).values():
             node = pve.find(int(body["vm_id"]))
             if node is None:
                 missing.append(body["name"])

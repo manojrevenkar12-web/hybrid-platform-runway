@@ -129,13 +129,10 @@ class TestTranslate:
         assessed = Assessor().assess_all(sim.estate())
         p = Planner(target, windows).plan(assessed, at(2026, 11, 16), at(2027, 4, 30))
         files = translate.write(p, assessed, target.network_map, tmp_path)
-        tf = json.loads((tmp_path / "terraform" / "wave-01" / "main.tf.json").read_text())
-        assert tf["terraform"]["required_providers"]["proxmox"]["source"] == "bpg/proxmox"
-        vms = [
-            b
-            for f in tmp_path.glob("terraform/*/main.tf.json")
-            for b in json.loads(f.read_text())["resource"]["proxmox_virtual_environment_vm"].values()
-        ]
+        tf = (tmp_path / "terraform" / "wave-01" / "main.tf").read_text()
+        assert 'source  = "bpg/proxmox"' in tf and 'resource "proxmox_virtual_environment_vm"' in tf
+        assert "network_device {" in tf and "ignore_changes = [disk]" in tf
+        vms = [b for f in tmp_path.glob("terraform/*/vms.json") for b in json.loads(f.read_text()).values()]
         assert len(vms) == sum(len(w.placements) for w in p.waves)
         assert len({b["vm_id"] for b in vms}) == len(vms), "VM ids must be unique"
         win = next(b for b in vms if b["operating_system"]["type"].startswith("win"))
@@ -145,6 +142,7 @@ class TestTranslate:
         gpu = next(b for b in vms if "hostpci" in b)
         assert gpu["hostpci"][0]["mapping"] == "gpu-a100"
         assert len([f for f in files if f.suffix == ".yml"]) == len(vms)
+        assert tf.count("{") == tf.count("}")
 
     def test_macs_and_vlans_are_kept(self, target) -> None:  # type: ignore[no-untyped-def]
         from runway.plan import Placement

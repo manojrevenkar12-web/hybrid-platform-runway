@@ -53,6 +53,16 @@ def _count_snapshots(tree: Any) -> int:
     return sum(1 + _count_snapshots(t.childSnapshotList) for t in tree or [])
 
 
+def _snapshots(vm: Any) -> int:
+    """Snapshot count from the snapshot tree; older and newer API versions disagree on the tree's
+    fields, so fall back to the disk layout, which lists one entry per snapshot."""
+    try:
+        return _count_snapshots(vm.snapshot.rootSnapshotList) if vm.snapshot else 0
+    except Exception:
+        layout = getattr(vm, "layoutEx", None)
+        return len(layout.snapshot) if layout and layout.snapshot else 0
+
+
 def vm_from_pyvmomi(vm: Any, datastore_types: dict[str, str], portgroups: dict[str, str]) -> VM:
     """Map one pyVmomi VirtualMachine to the runway model."""
     from pyVmomi import vim
@@ -107,7 +117,7 @@ def vm_from_pyvmomi(vm: Any, datastore_types: dict[str, str], portgroups: dict[s
         vtpm=vtpm or meta.get("vtpm") == "true",
         disks=tuple(disks),
         nics=tuple(nics),
-        snapshots=_count_snapshots(vm.snapshot.rootSnapshotList) if vm.snapshot else 0,
+        snapshots=_snapshots(vm),
         tools_installed=tools not in (None, "toolsNotInstalled"),
         passthrough=tuple(passthrough),
         powered_on=str(vm.runtime.powerState) == "poweredOn",

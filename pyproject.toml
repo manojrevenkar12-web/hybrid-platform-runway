@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Leave VMware for Proxmox VE without touching a launch campaign: inventory, compatibility, wave plans, Terraform and Ansible per VM, cutover with rollback, drift."
 requires-python = ">=3.12"
 dependencies = [
-  "pyvmomi==8.0.3.0.1",
+  "pyvmomi==9.0.0.0",
   "fastapi==0.115.6",
   "uvicorn==0.34.0",
   "httpx==0.28.1",
