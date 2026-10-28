@@ -1,0 +1,24 @@
+---
+- name: Baseline, then a cutover in two phases, then Proxmox node networking (Debian)
+  hosts: all
+  gather_facts: true
+  vars:
+    runway_nics: [{mac: "{{ ansible_facts.default_ipv4.macaddress }}", portgroup: pg-servers-110}]
+  tasks:
+    - name: Baseline
+      ansible.builtin.include_role:
+        name: linux_baseline
+    - name: Cutover, pre phase (on VMware)
+      ansible.builtin.include_role:
+        name: guest_cutover
+      vars:
+        guest_cutover_phase: pre
+    - name: Cutover, post phase (on Proxmox)
+      ansible.builtin.include_role:
+        name: guest_cutover
+      vars:
+        guest_cutover_phase: post
+    - name: Proxmox node network (Debian is Proxmox VE's base)
+      ansible.builtin.include_role:
+        name: pve_network
+      when: ansible_facts.os_family == 'Debian'

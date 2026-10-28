@@ -1,0 +1,15 @@
+---
+- name: Make the containers look like freshly migrated VMs
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: SSH server and open-vm-tools present, as on a VMware guest
+      ansible.builtin.package:
+        name: [openssh-server, open-vm-tools]
+        state: present
+    - name: Debian needs ifupdown2's directory for the node network
+      ansible.builtin.file:
+        path: /etc/network
+        state: directory
+        mode: "0755"
+      when: ansible_facts.os_family == 'Debian'

@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  role_name: linux_baseline
+  author: platform
+  description: Hardened baseline for RHEL 9 and Debian 12
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - {name: EL, versions: ["9"]}
+    - {name: Debian, versions: [bookworm]}
+dependencies: []

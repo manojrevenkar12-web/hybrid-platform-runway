@@ -69,3 +69,48 @@ jobs:
             (cd "$d" && ../../../scripts/annotate_on_failure.sh "terraform validate $d" sh -c "terraform init -backend=false -input=false -no-color >/dev/null && terraform validate -no-color") || exit 1
           done
           echo "::notice title=generated Terraform::$(ls -d generated/terraform/wave-* | wc -l) wave roots, $(grep -o '\"vm_id\"' -r generated/terraform | wc -l) VMs, all valid against bpg/proxmox"
+
+  ansible:
+    name: ansible (lint, Molecule on Rocky 9 and Debian 12)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: infra/ansible
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install "ansible-core==2.18.1" "ansible-lint==24.12.2" "molecule==24.12.0" "molecule-plugins[docker]==23.6.0" "docker==7.1.0"
+      - run: ansible-galaxy collection install -r requirements.yml
+      - run: ../../scripts/annotate_on_failure.sh "ansible-lint" ansible-lint
+      - run: ../../scripts/annotate_on_failure.sh "molecule" molecule test
+
+  terraform:
+    name: terraform (fmt, validate, plan tests with mocked AWS and Proxmox)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - run: ../../scripts/annotate_on_failure.sh "terraform fmt" terraform fmt -check -recursive -diff
+      - run: ../../scripts/annotate_on_failure.sh "terraform init" terraform init -backend=false -input=false -no-color
+      - run: ../../scripts/annotate_on_failure.sh "terraform validate" terraform validate -no-color
+      - run: ../../scripts/annotate_on_failure.sh "terraform test" terraform test -no-color
+
+  bicep:
+    name: bicep (build and lint the Azure hub)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: infra/bicep
+    steps:
+      - uses: actions/checkout@v5
+      - run: az bicep install
+      - run: ../../scripts/annotate_on_failure.sh "bicep build" az bicep build --file main.bicep --stdout > /dev/null
+      - run: ../../scripts/annotate_on_failure.sh "bicep lint" az bicep lint --file main.bicep
+      - run: ../../scripts/annotate_on_failure.sh "bicep params" az bicep build-params --file main.bicepparam --stdout > /dev/null

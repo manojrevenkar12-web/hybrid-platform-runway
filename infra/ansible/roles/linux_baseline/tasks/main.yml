@@ -1,0 +1,80 @@
+---
+- name: Supported distributions only
+  ansible.builtin.assert:
+    that: ansible_facts.os_family in ['RedHat', 'Debian']
+    fail_msg: "linux_baseline supports RHEL-family and Debian-family hosts, not {{ ansible_facts.os_family }}"
+
+- name: Packages (RedHat)
+  ansible.builtin.dnf:
+    name: "{{ linux_baseline_packages_common + (['dnf-automatic'] if linux_baseline_security_updates else []) }}"
+    state: present
+  when: ansible_facts.os_family == 'RedHat'
+
+- name: Packages (Debian)
+  ansible.builtin.apt:
+    name: "{{ linux_baseline_packages_common + (['unattended-upgrades'] if linux_baseline_security_updates else []) }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts.os_family == 'Debian'
+
+- name: Time from the site's NTP servers
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: "{{ '/etc/chrony.conf' if ansible_facts.os_family == 'RedHat' else '/etc/chrony/chrony.conf' }}"
+    mode: "0644"
+  notify: Restart chrony
+
+- name: SSH hardening drop-in
+  ansible.builtin.template:
+    src: sshd-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/10-baseline.conf
+    mode: "0600"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reload sshd
+
+- name: Kernel parameters
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/90-baseline.conf
+    mode: "0644"
+    content: |
+      # Managed by Ansible (linux_baseline). Manual changes are drift.
+      {% for k, v in linux_baseline_sysctl | dictsort %}
+      {{ k }} = {{ v }}
+      {% endfor %}
+  notify: Apply sysctl
+
+- name: Persistent journal with a size cap
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/10-baseline.conf
+    mode: "0644"
+    content: |
+      [Journal]
+      Storage=persistent
+      SystemMaxUse={{ linux_baseline_journald_max_use }}
+  notify: Restart journald
+
+- name: Security updates applied automatically (RedHat)
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/automatic.conf
+    regexp: '^{{ item.key }}\s*='
+    line: "{{ item.key }} = {{ item.value }}"
+  loop:
+    - {key: upgrade_type, value: security}
+    - {key: apply_updates, value: "yes"}
+  when: ansible_facts.os_family == 'RedHat' and linux_baseline_security_updates
+
+- name: Security updates applied automatically (Debian)
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+  when: ansible_facts.os_family == 'Debian' and linux_baseline_security_updates
+
+- name: Record what the baseline did
+  ansible.builtin.copy:
+    dest: /etc/baseline-release
+    mode: "0644"
+    content: "linux_baseline applied; os={{ ansible_facts.distribution }} {{ ansible_facts.distribution_major_version }}\n"

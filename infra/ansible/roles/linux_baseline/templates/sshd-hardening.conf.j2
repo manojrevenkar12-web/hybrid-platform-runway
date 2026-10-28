@@ -1,0 +1,8 @@
+# Managed by Ansible (linux_baseline).
+Port {{ linux_baseline_ssh_port }}
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+X11Forwarding no
+MaxAuthTries 3
+AllowGroups {{ linux_baseline_ssh_allow_groups | join(' ') }}

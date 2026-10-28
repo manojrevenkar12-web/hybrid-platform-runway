@@ -1,0 +1,19 @@
+---
+# A hardened baseline for RHEL 9 and Debian 12 servers. Values here are the defaults; sites
+# override them in group_vars, never by hand on a host.
+linux_baseline_ntp_servers: [ntp1.hq.example, ntp2.hq.example]
+linux_baseline_ssh_allow_groups: [ops, wheel]
+linux_baseline_ssh_port: 22
+linux_baseline_security_updates: true
+linux_baseline_journald_max_use: 1G
+linux_baseline_sysctl:
+  net.ipv4.ip_forward: 0
+  net.ipv4.conf.all.rp_filter: 1
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv6.conf.all.accept_redirects: 0
+  kernel.kptr_restrict: 2
+  kernel.dmesg_restrict: 1
+  fs.protected_hardlinks: 1
+  fs.protected_symlinks: 1
+linux_baseline_packages_common: [chrony, auditd, rsyslog, sudo, curl]

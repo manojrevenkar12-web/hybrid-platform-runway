@@ -1,0 +1,29 @@
+---
+- name: The guest was prepared before the cutover
+  ansible.builtin.stat:
+    path: /etc/runway-prepared
+  register: _prepared
+
+- name: Refuse to finish a guest that skipped the pre phase
+  ansible.builtin.assert:
+    that: _prepared.stat.exists
+    fail_msg: "Run the pre phase on VMware first; without it the interface names and initramfs are not ready."
+
+- name: VMware Tools removed
+  ansible.builtin.package:
+    name: open-vm-tools
+    state: absent
+  when: runway_remove_vmware_tools | default(true)
+
+- name: Guest agent enabled and started
+  ansible.builtin.service:
+    name: qemu-guest-agent
+    enabled: true
+    state: started
+  when: not (guest_cutover_in_container | default(false))
+
+- name: Record the cutover
+  ansible.builtin.copy:
+    dest: /etc/runway-migrated
+    mode: "0644"
+    content: "{{ runway_vm | default(inventory_hostname) }} runs on Proxmox VE\n"

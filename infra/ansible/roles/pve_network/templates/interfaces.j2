@@ -1,0 +1,30 @@
+# Managed by Ansible (pve_network). Manual changes are drift and will be overwritten.
+auto lo
+iface lo inet loopback
+
+{% for s in pve_network_bond.slaves %}
+iface {{ s }} inet manual
+{% endfor %}
+
+auto {{ pve_network_bond.name }}
+iface {{ pve_network_bond.name }} inet manual
+    bond-slaves {{ pve_network_bond.slaves | join(' ') }}
+    bond-miimon 100
+    bond-mode {{ pve_network_bond.mode }}
+    bond-xmit-hash-policy {{ pve_network_bond.hash_policy }}
+
+{% for b in pve_network_bridges %}
+# {{ b.comment }}
+auto {{ b.name }}
+iface {{ b.name }} inet manual
+    bridge-ports {{ b.ports }}
+    bridge-stp off
+    bridge-fd 0
+    bridge-vlan-aware yes
+    bridge-vids {{ b.vlans }}
+
+{% endfor %}
+auto vmbr0.{{ pve_network_management.vlan }}
+iface vmbr0.{{ pve_network_management.vlan }} inet static
+    address {{ pve_network_management.address }}
+    gateway {{ pve_network_management.gateway }}

@@ -1,0 +1,23 @@
+---
+- name: Restart chrony
+  ansible.builtin.service:
+    name: "{{ 'chronyd' if ansible_facts.os_family == 'RedHat' else 'chrony' }}"
+    state: restarted
+  when: ansible_facts.service_mgr == 'systemd' and not (linux_baseline_in_container | default(false))
+
+- name: Reload sshd
+  ansible.builtin.service:
+    name: "{{ 'sshd' if ansible_facts.os_family == 'RedHat' else 'ssh' }}"
+    state: reloaded
+  when: not (linux_baseline_in_container | default(false))
+
+- name: Apply sysctl
+  ansible.builtin.command: sysctl --system
+  changed_when: true
+  when: not (linux_baseline_in_container | default(false))
+
+- name: Restart journald
+  ansible.builtin.service:
+    name: systemd-journald
+    state: restarted
+  when: not (linux_baseline_in_container | default(false))

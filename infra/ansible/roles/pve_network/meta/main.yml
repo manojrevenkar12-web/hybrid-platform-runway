@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: pve_network
+  author: platform
+  description: Proxmox VE node networking with VLAN-aware bridges
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - {name: Debian, versions: [bookworm]}
+dependencies: []

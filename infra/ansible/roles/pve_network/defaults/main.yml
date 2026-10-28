@@ -1,0 +1,17 @@
+---
+# Proxmox VE node networking: a bond for uplinks, VLAN-aware bridges for guests, a management VLAN.
+# The bridge names and VLANs must match network_map in config/target.yaml.
+pve_network_bond:
+  name: bond0
+  slaves: [eno1, eno2]
+  mode: 802.3ad
+  hash_policy: layer3+4
+pve_network_management:
+  vlan: 10
+  address: 10.10.0.11/24
+  gateway: 10.10.0.1
+pve_network_bridges:
+  - {name: vmbr0, ports: bond0, vlans: "10 110 120 400", comment: "servers, databases, lab"}
+  - {name: vmbr1, ports: bond0, vlans: "200", comment: "DMZ"}
+  - {name: vmbr2, ports: bond0, vlans: "310", comment: "OT / test stands, firewalled at the site edge"}
+pve_network_interfaces_path: /etc/network/interfaces

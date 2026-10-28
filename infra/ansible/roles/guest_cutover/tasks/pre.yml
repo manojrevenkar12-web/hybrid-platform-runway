@@ -1,0 +1,63 @@
+---
+# The interface name inside the guest almost always changes on a new hypervisor, and every config
+# that names it (netplan, ifcfg, NetworkManager, /etc/network/interfaces, firewall rules) breaks.
+# Pinning today's name to the NIC's MAC with a systemd .link file keeps all of them working,
+# because runway keeps the MAC on Proxmox.
+- name: Interfaces the plan knows, by MAC
+  ansible.builtin.set_fact:
+    guest_cutover_links: >-
+      {{ guest_cutover_links | default([]) + [{'name': item, 'mac': ansible_facts[item | replace('-', '_')].macaddress | lower}] }}
+  loop: "{{ ansible_facts.interfaces | reject('equalto', 'lo') | list }}"
+  when:
+    - ansible_facts[item | replace('-', '_')].macaddress is defined
+    - (ansible_facts[item | replace('-', '_')].macaddress | lower) in ((runway_nics | default([])) | map(attribute='mac') | map('lower') | list)
+
+- name: Every NIC in the plan was found in the guest
+  ansible.builtin.assert:
+    that: (guest_cutover_links | default([]) | length) == (runway_nics | default([]) | length)
+    fail_msg: >-
+      The plan lists {{ (runway_nics | default([])) | map(attribute='mac') | list }} but the guest has
+      {{ guest_cutover_links | default([]) | map(attribute='mac') | list }}. Fix the inventory before the window.
+
+- name: Pin each interface name to its MAC
+  ansible.builtin.template:
+    src: runway.link.j2
+    dest: "/etc/systemd/network/10-runway-{{ item.name }}.link"
+    mode: "0644"
+  loop: "{{ guest_cutover_links | default([]) }}"
+  loop_control:
+    label: "{{ item.name }} {{ item.mac }}"
+
+- name: VirtIO drivers in the initramfs (RedHat, dracut)
+  ansible.builtin.copy:
+    dest: /etc/dracut.conf.d/90-runway-virtio.conf
+    mode: "0644"
+    content: 'add_drivers+=" {{ guest_cutover_virtio_modules | join(" ") }} "'
+  register: _dracut
+  when: ansible_facts.os_family == 'RedHat'
+
+- name: VirtIO drivers in the initramfs (Debian, initramfs-tools)
+  ansible.builtin.lineinfile:
+    path: /etc/initramfs-tools/modules
+    line: "{{ item }}"
+    create: true
+    mode: "0644"
+  loop: "{{ guest_cutover_virtio_modules }}"
+  register: _itools
+  when: ansible_facts.os_family == 'Debian'
+
+- name: Rebuild the initramfs
+  ansible.builtin.command: "{{ 'dracut -f --regenerate-all' if ansible_facts.os_family == 'RedHat' else 'update-initramfs -u -k all' }}"
+  changed_when: true
+  when: guest_cutover_rebuild_initramfs and ((_dracut is changed) or (_itools is changed))
+
+- name: Guest agent installed (idle until it finds its channel on Proxmox)
+  ansible.builtin.package:
+    name: qemu-guest-agent
+    state: present
+
+- name: Mark the guest as prepared
+  ansible.builtin.copy:
+    dest: /etc/runway-prepared
+    mode: "0644"
+    content: "{{ runway_vm | default(inventory_hostname) }} prepared for Proxmox VE\n"

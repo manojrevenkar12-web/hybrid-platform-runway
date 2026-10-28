@@ -1,0 +1,7 @@
+# Managed by Ansible (linux_baseline).
+{% for s in linux_baseline_ntp_servers %}
+server {{ s }} iburst
+{% endfor %}
+driftfile /var/lib/chrony/drift
+makestep 1.0 3
+rtcsync

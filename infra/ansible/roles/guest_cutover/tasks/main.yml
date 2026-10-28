@@ -1,0 +1,12 @@
+---
+- name: Linux guests only
+  ansible.builtin.assert:
+    that: ansible_facts.system == 'Linux' and guest_cutover_phase in ['pre', 'post']
+
+- name: Pre-cutover steps
+  ansible.builtin.include_tasks: pre.yml
+  when: guest_cutover_phase == 'pre'
+
+- name: Post-cutover steps
+  ansible.builtin.include_tasks: post.yml
+  when: guest_cutover_phase == 'post'

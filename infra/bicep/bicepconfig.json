@@ -1,0 +1,16 @@
+{
+  "analyzers": {
+    "core": {
+      "enabled": true,
+      "rules": {
+        "no-hardcoded-env-urls": { "level": "error" },
+        "secure-parameter-default": { "level": "error" },
+        "outputs-should-not-contain-secrets": { "level": "error" },
+        "no-unused-params": { "level": "error" },
+        "no-unused-vars": { "level": "error" },
+        "use-recent-api-versions": { "level": "warning" },
+        "adminusername-should-not-be-literal": { "level": "error" }
+      }
+    }
+  }
+}
