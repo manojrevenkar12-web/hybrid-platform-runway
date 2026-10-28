@@ -28,6 +28,12 @@
   loop_control:
     label: "{{ item.name }} {{ item.mac }}"
 
+- name: Initramfs configuration directory
+  ansible.builtin.file:
+    path: "{{ '/etc/dracut.conf.d' if ansible_facts.os_family == 'RedHat' else '/etc/initramfs-tools' }}"
+    state: directory
+    mode: "0755"
+
 - name: VirtIO drivers in the initramfs (RedHat, dracut)
   ansible.builtin.copy:
     dest: /etc/dracut.conf.d/90-runway-virtio.conf
