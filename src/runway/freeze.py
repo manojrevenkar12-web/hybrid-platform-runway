@@ -24,6 +24,12 @@ def _hours(c: Campaign) -> str:
     return f"{round((c.freeze_end - c.freeze_start).total_seconds() / 3600)}h"
 
 
+def window_names(w: Windows, site_clusters: dict[str, list[str]], now: datetime) -> dict[str, str]:
+    """Which campaign each generated window belongs to, by schedule (Argo CD windows carry no name)."""
+    tz = ZoneInfo(w.timezone)
+    return {_cron(c.freeze_start.astimezone(tz)): c.name for c in w.campaigns if c.freeze_end > now}
+
+
 def argocd_sync_windows(w: Windows, site_clusters: dict[str, list[str]], now: datetime) -> list[dict[str, Any]]:
     """Deny windows for every freeze that has not ended. Argo CD schedules are cron + duration, so a
     one-off freeze is written as a yearly cron with the freeze's start; ended freezes are dropped so
@@ -44,7 +50,6 @@ def argocd_sync_windows(w: Windows, site_clusters: dict[str, list[str]], now: da
                 "clusters": clusters or ["*"],
                 "manualSync": False,
                 "timeZone": w.timezone,
-                "description": f"freeze for {c.name}",
             }
         )
     return out

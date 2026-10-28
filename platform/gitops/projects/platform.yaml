@@ -25,7 +25,6 @@ spec:
     - ocp-hq
     manualSync: false
     timeZone: Europe/Berlin
-    description: freeze for flight-3
   - kind: deny
     schedule: 0 0 21 12 *
     duration: 384h
@@ -37,7 +36,6 @@ spec:
     - ocp-hq
     manualSync: false
     timeZone: Europe/Berlin
-    description: freeze for year-end
   - kind: deny
     schedule: 0 9 19 1 *
     duration: 96h
@@ -47,7 +45,6 @@ spec:
     - ocp-factory
     manualSync: false
     timeZone: Europe/Berlin
-    description: freeze for static-fire-s5
   - kind: deny
     schedule: 0 11 4 3 *
     duration: 384h
@@ -58,5 +55,4 @@ spec:
     - ocp-hq
     manualSync: false
     timeZone: Europe/Berlin
-    description: freeze for flight-4
 

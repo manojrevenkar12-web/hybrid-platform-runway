@@ -159,10 +159,11 @@ def main(argv: list[str] | None = None) -> int:
         if a.what == "argocd" and a.check:
             want = freeze.argocd_sync_windows(w, clusters, now)
             have = yaml.safe_load(a.check.read_text())["spec"].get("syncWindows", [])
-            missing = [x["description"] for x in want if x not in have]
-            stale = [x.get("description", x.get("schedule")) for x in have if x not in want]
+            names = freeze.window_names(w, clusters, now)
+            missing = [names.get(x["schedule"], x["schedule"]) for x in want if x not in have]
+            stale = [str(x.get("schedule")) for x in have if x not in want]
             for d in stale:
-                print(f"::warning::{a.check}: '{d}' has ended or changed; regenerate with `runway freeze argocd`")
+                print(f"::warning::{a.check}: the window '{d}' has ended or changed; regenerate with `runway freeze argocd`")
             if missing:
                 print(f"{a.check} is missing current freezes: {', '.join(missing)}. Regenerate with `runway freeze argocd`.")
                 return 1

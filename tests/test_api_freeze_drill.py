@@ -74,7 +74,7 @@ class TestFreeze:
         w = settings.windows()
         clusters = yaml.safe_load((settings.CONFIG_DIR / "gitops.yaml").read_text())["site_clusters"]
         wins = freeze.argocd_sync_windows(w, clusters, at(2026, 11, 1))
-        f3 = next(x for x in wins if x["description"] == "freeze for flight-3")
+        f3 = next(x for x in wins if x["schedule"] == "0 11 26 11 *")
         assert f3 == {
             **f3,
             "kind": "deny",
@@ -83,9 +83,9 @@ class TestFreeze:
             "clusters": ["k8s-launch-edge", "ocp-hq"],
             "manualSync": False,
         }
-        assert next(x for x in wins if "year-end" in x["description"])["clusters"] == ["k8s-launch-edge", "ocp-factory", "ocp-hq"]
+        assert next(x for x in wins if x["schedule"] == "0 0 21 12 *")["clusters"] == ["k8s-launch-edge", "ocp-factory", "ocp-hq"]
         # an ended freeze is dropped, so a yearly cron cannot bring it back next year
-        assert not [x for x in freeze.argocd_sync_windows(w, clusters, at(2027, 6, 1)) if "flight-3" in x["description"]]
+        assert not [x for x in freeze.argocd_sync_windows(w, clusters, at(2027, 6, 1)) if x["schedule"] == "0 11 26 11 *"]
 
     def test_gitlab_freeze_periods(self) -> None:
         periods = freeze.gitlab_freeze_periods(settings.windows(), at(2026, 11, 1))

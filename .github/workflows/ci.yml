@@ -160,7 +160,7 @@ jobs:
       - name: Argo CD syncs runway from this commit
         run: |
           runway freeze argocd > /tmp/project.yaml
-          kubectl apply -f /tmp/project.yaml
+          scripts/annotate_on_failure.sh "apply AppProject" kubectl apply -f /tmp/project.yaml
           cat <<YAML | kubectl apply -f -
           apiVersion: argoproj.io/v1alpha1
           kind: Application
@@ -185,7 +185,7 @@ jobs:
         run: |
           mkdir -p /tmp/frozen && ci/kind/freeze-config.sh /tmp/frozen
           RUNWAY_CONFIG=/tmp/frozen runway freeze argocd > /tmp/frozen-project.yaml
-          kubectl apply -f /tmp/frozen-project.yaml
+          scripts/annotate_on_failure.sh "apply frozen AppProject" kubectl apply -f /tmp/frozen-project.yaml
           curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/v2.14.0/argocd-linux-amd64 && chmod +x argocd
           kubectl config set-context --current --namespace=argocd
           set +e
